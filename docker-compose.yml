@@ -1,0 +1,19 @@
+db:
+  image: postgres:9.4
+  ports:
+    - "5432"
+web:
+  build: .
+  environment:
+    - HOST=0.0.0.0
+    - PGUSER=postgres
+    - PGPASS
+    - PGHOST=db
+  command: "stack exec -- yesod devel"
+  volumes:
+    - .:/app
+  stdin_open: true
+  ports:
+    - "3000:3000"
+  links:
+    - db

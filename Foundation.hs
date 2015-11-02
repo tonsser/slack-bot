@@ -119,6 +119,9 @@ instance YesodPersistRunner App where
 instance YesodAuth App where
     type AuthId App = UserId
 
+    loginDest _ = BotR
+    logoutDest _ = BotR
+
     -- Override the above two destinations when a Referer: header is present
     redirectToReferer _ = True
 

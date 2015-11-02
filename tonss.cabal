@@ -23,6 +23,7 @@ library
                      Handler.Common
                      Handler.Bot
                      SlackTypes
+                     BotAction
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT
@@ -84,6 +85,9 @@ library
                  , vector
                  , time
                  , transformers
+                 , MissingH
+                 , regex-compat
+                 , process
 
 executable         tonss
     if flag(library-only)
