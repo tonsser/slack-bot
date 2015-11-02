@@ -88,6 +88,7 @@ library
                  , MissingH
                  , regex-compat
                  , process
+                 , random
 
 executable         tonss
     if flag(library-only)
