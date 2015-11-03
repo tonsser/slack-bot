@@ -17,15 +17,24 @@ type MissingParams = [Text]
 
 buildSlackRequestFromParams :: (MonadHandler m) => m (Either MissingParams SlackRequest)
 buildSlackRequestFromParams = do
-    let requiredParams = [ "token" , "team_id" , "team_domain"
-                         , "channel_id" , "channel_name" , "timestamp"
-                         , "user_id" , "user_name" , "text" , "trigger_word"
-                         ]
-    actualParams <- catMaybes <$> mapM lookupPostParam requiredParams
-    let missingParams = listDiff requiredParams actualParams
-    case missingParams of
-      [] -> liftM Right unsafeBuildRequest
-      missing -> return $ Left missing
+    let
+      requiredParams :: [Text]
+      requiredParams = [ "token" , "team_id" , "team_domain"
+                       , "channel_id" , "channel_name" , "timestamp"
+                       , "user_id" , "user_name" , "text" , "trigger_word"
+                       ]
+
+      justIfKeyExists :: (MonadHandler m) => Text -> m (Maybe Text)
+      justIfKeyExists key = do
+        value <- lookupPostParam key
+        case value of
+          Nothing -> return Nothing
+          Just _ -> return $ Just key
+
+    presentParams <- catMaybes <$> mapM justIfKeyExists requiredParams
+    if length presentParams == length requiredParams
+      then liftM Right unsafeBuildRequest
+      else return $ Left $ listDiff requiredParams presentParams
 
 unsafeBuildRequest :: (MonadHandler m) => m SlackRequest
 unsafeBuildRequest = do
