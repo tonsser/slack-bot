@@ -20,13 +20,10 @@ processRequest req =
 
       match :: Maybe ([String], BotAction)
       match = matchingAction text actions
-
-      channel :: Maybe ResponseDestination
-      channel = Just $ ResponseDestinationChannel $ slackRequestChannelName req
     in case match of
          Nothing -> return Nothing
          Just (matches, a) -> (fmap . fmap)
-                                (\res -> SlackResponse res Nothing channel)
+                                (\res -> SlackResponse res)
                                 (a matches)
 
 matchingAction :: String -> [(String, BotAction)] -> Maybe ([String], BotAction)

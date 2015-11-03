@@ -10,7 +10,7 @@ import qualified Data.Text as T
 
 getBotR :: Handler Value
 getBotR = do
-    let json = toJSON $ ImageReferenceUrl "hit"
+    let json = toJSON $ ([("foo", "bar")] :: [(String, String)])
     return json
 
 type MissingParams = [Text]
@@ -66,5 +66,5 @@ postBotR = do
       Right req -> do
         res <- liftIO $ SH.processRequest req
         case res of
-          Nothing -> error "Couldn't handle that"
+          Nothing -> return $ toJSON $ SlackResponse "There was error..."
           Just res' -> return $ toJSON res'

@@ -2,31 +2,10 @@ module SlackTypes where
 
 import Import
 
-data ImageReference = ImageReferenceUrl Text
-                    | ImageReferenceEmoji Text
-
-instance ToJSON ImageReference where
-  toJSON (ImageReferenceEmoji emoji) = object ["emoji" .= emoji]
-  toJSON (ImageReferenceUrl url) = object ["url" .= url]
-
-data ResponseDestination = ResponseDestinationChannel Text
-                         | ResponseDestinationUsername Text
-
-instance ToJSON ResponseDestination where
-  toJSON (ResponseDestinationChannel channel) = object ["channel" .= channel]
-  toJSON (ResponseDestinationUsername username) = object ["username" .= username]
-
-data SlackResponse = SlackResponse
-                   { slackResponseText :: Text
-                   , slackResponseImage :: Maybe ImageReference
-                   , slackResponseChannel :: Maybe ResponseDestination
-                   }
+data SlackResponse = SlackResponse { slackResponseText :: Text }
 
 instance ToJSON SlackResponse where
-  toJSON (SlackResponse text image channel) = object [ "text" .= text
-                                                     , "image" .= image
-                                                     , "channel" .= channel
-                                                     ]
+  toJSON (SlackResponse text) = object [ "text" .= text ]
 
 data SlackRequest = SlackRequest
                   { slackRequestToken :: Text
@@ -42,8 +21,7 @@ data SlackRequest = SlackRequest
                   }
 
 instance ToJSON SlackRequest where
-    toJSON s = object [ "token" .= slackRequestToken s
-                      ]
+    toJSON s = object [ "token" .= slackRequestToken s ]
 
 -- token=XXXXXXXXXXXXXXXXXX
 -- team_id=T0001

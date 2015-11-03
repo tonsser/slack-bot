@@ -5,6 +5,7 @@ module BotAction
   ) where
 
 import Import
+import qualified Data.List.Utils as L
 import System.Random
 import qualified Data.Text as T
 import qualified System.Process as SP
@@ -31,24 +32,36 @@ help _ = concatText doc
 getTime :: BotAction
 getTime _ = do
     date <- runProcess "date"
-    concatText ["The current datetime is ", date]
+    concatText ["The current time is ", date]
 
 nth :: Int -> [a] -> Maybe a
 nth _ [] = Nothing
-nth 0 [x] = Just x
+nth 0 (x:_) = Just x
 nth n (_:xs) = nth (n - 1) xs
 
 sample :: [a] -> IO (Maybe a)
 sample xs = do
-    idx <- randomRIO (0, length xs - 1)
+    idx <- randomRIO (0, (length xs - 1))
+    print idx
     return $ nth idx xs
 
 randomJoke :: BotAction
-randomJoke _ = sample [ "How many programmers does it take to screw in a light bulb? None, thats a hardware problem"
+randomJoke _ = sample [ "one"
+                      , "two"
+                      , "three"
                       ]
 
 runProcess :: Text -> IO Text
-runProcess cmd = T.pack <$> SP.readProcess (T.unpack cmd) [] []
+runProcess cmd = removeExtraSpaces . T.strip . T.pack <$> SP.readProcess (T.unpack cmd) [] []
+
+removeExtraSpaces :: Text -> Text
+removeExtraSpaces = T.pack . fix (L.replace "  " " ") . T.unpack
+
+fix :: (Eq a) => (a -> a) -> a -> a
+fix f x = let x' = f x
+              in if x == x'
+                   then x'
+                   else fix f x'
 
 concatText :: (Monad m, Monoid a) => [a] -> m (Maybe a)
 concatText = return . Just . mconcat
