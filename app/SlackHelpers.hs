@@ -2,6 +2,7 @@ module SlackHelpers
     ( textWithoutTriggerWord
     , matchingAction
     , processRequest
+    , ProcessRequestError(..)
     )
   where
 
@@ -12,7 +13,14 @@ import qualified Data.Text as T
 import qualified Text.Regex as R
 import BotAction
 
-processRequest :: SlackRequest -> IO (Maybe SlackResponse)
+data ProcessRequestError = UnknownAction
+                         | UnknownError
+
+instance Show ProcessRequestError where
+    show UnknownAction = "Unknown action"
+    show UnknownError = "An error occured..."
+
+processRequest :: SlackRequest -> IO (Either ProcessRequestError SlackResponse)
 processRequest req =
     let
       text :: String
@@ -21,10 +29,12 @@ processRequest req =
       match :: Maybe ([String], BotAction)
       match = matchingAction text actions
     in case match of
-         Nothing -> return Nothing
-         Just (matches, a) -> (fmap . fmap)
-                                (\res -> SlackResponse res)
-                                (a matches)
+         Nothing -> return $ Left UnknownAction
+         Just (matches, a) -> do
+           res <- (fmap . fmap) (\res -> SlackResponse res) (a matches)
+           case res of
+             Nothing -> return $ Left UnknownError
+             Just x -> return $ Right x
 
 matchingAction :: String -> [(String, BotAction)] -> Maybe ([String], BotAction)
 matchingAction t as = helper t $ map (`mapFst` R.mkRegex) as

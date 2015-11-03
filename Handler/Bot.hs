@@ -66,5 +66,5 @@ postBotR = do
       Right req -> do
         res <- liftIO $ SH.processRequest req
         case res of
-          Nothing -> return $ toJSON $ SlackResponse "There was error..."
-          Just res' -> return $ toJSON res'
+          Left err -> return $ toJSON $ SlackResponse $ T.pack $ show err
+          Right res' -> return $ toJSON res'

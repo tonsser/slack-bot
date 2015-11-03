@@ -15,14 +15,20 @@ type BotAction = [String] -> IO (Maybe Text)
 actions :: [(String, BotAction)]
 actions = [ ("what time is it", getTime)
           , ("tell me a joke", randomJoke)
+          , ("flip a coin", flipCoin)
           , ("help", help)
           ]
+
+flipCoin :: BotAction
+flipCoin _ = do
+    result <- sample ["heads", "tails"]
+    return $ result
 
 help :: BotAction
 help _ = concatText doc
   where
     commands :: [Text]
-    commands = map (T.pack . fst) actions
+    commands = map (T.pack . fst) (sortBy (compare `on` fst) actions)
 
     doc :: [Text]
     doc = [ "Here are the commands I know about: ", "\n"
@@ -42,7 +48,6 @@ nth n (_:xs) = nth (n - 1) xs
 sample :: [a] -> IO (Maybe a)
 sample xs = do
     idx <- randomRIO (0, (length xs - 1))
-    print idx
     return $ nth idx xs
 
 randomJoke :: BotAction
