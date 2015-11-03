@@ -24,6 +24,7 @@ library
                      Handler.Bot
                      SlackTypes
                      BotAction
+                     SlackHelpers
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT

@@ -1,0 +1,53 @@
+module SlackHelpersSpec (spec) where
+
+import TestImport
+import qualified BotAction as BA
+import qualified SlackHelpers as SH
+import SlackTypes
+
+sampleActions :: [(String, BA.BotAction)]
+sampleActions = [ ("foobar", const $ return $ Just "hest!")
+                , ("tell me about (.*)", const $ return $ Just "hest!")
+                , ("what do you (.+) about (.+)", const $ return $ Just "hest!")
+                ]
+
+sampleSlackReqest :: SlackRequest
+sampleSlackReqest = SlackRequest { slackRequestToken = "token"
+                                 , slackRequestTeamId = "team-id"
+                                 , slackRequestTeamDomain = "team-domain"
+                                 , slackRequestChannelId = "channel-id"
+                                 , slackRequestChannelName = "channel-name"
+                                 , slackRequestTimestamp = "timestamp"
+                                 , slackRequestUserId = "user-id"
+                                 , slackRequestUsername = "username"
+                                 , slackRequestText = "text"
+                                 , slackRequestTriggerWord = "triggerword"
+                                 }
+
+spec :: Spec
+spec = do
+    let request' = sampleSlackReqest { slackRequestText = "bot hi there"
+                                     , slackRequestTriggerWord = "bot"
+                                     }
+
+    describe "textWithoutTriggerWord" $ do
+      it "finds the matching action" $ do
+        let text = SH.textWithoutTriggerWord request'
+        text `shouldBe` "hi there"
+
+    describe "matchingAction" $ do
+      it "returns the action that matches" $ do
+        let commandArgs = fst <$> SH.matchingAction "foobar" sampleActions
+        commandArgs `shouldBe` (Just [])
+
+      it "returns the action that matches the pattern" $ do
+        let commandArgs = fst <$> SH.matchingAction "tell me about hest ko" sampleActions
+        commandArgs `shouldBe` (Just ["hest ko"])
+
+      it "returns the action that matches the pattern with multiple words" $ do
+        let commandArgs = fst <$> SH.matchingAction "what do you think about hest" sampleActions
+        commandArgs `shouldBe` (Just ["think", "hest"])
+
+      it "returns Nothing if no action matches" $ do
+        let commandArgs = fst <$> SH.matchingAction "hest" sampleActions
+        commandArgs `shouldBe` Nothing
