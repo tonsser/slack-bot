@@ -14,6 +14,7 @@ import Text.Read
 import qualified Network.HTTP.Conduit as HTTP
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Char8 as BS
+import Text.Regex
 
 type BotAction = (String -> IO (Either String ())) -> [String] -> IO (Either String ())
 
@@ -32,8 +33,10 @@ httpGet url = BS.unpack . LBS.toStrict <$> HTTP.simpleHttp url
 
 cat :: BotAction
 cat postToSlack _ = do
-    url <- httpGet "http://thecatapi.com/api/images/get"
-    postToSlack url
+    resp <- httpGet "http://thecatapi.com/api/images/get?format=xml"
+    case matchRegex (mkRegex "<url>(.*)</url>") resp of
+      Just [url] -> postToSlack url
+      _ -> err "Something went wrong"
 
 pickupLunch :: BotAction
 pickupLunch postToSlack _ = do
