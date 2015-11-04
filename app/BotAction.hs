@@ -18,7 +18,7 @@ actions = [ ("what time is it", getTime)
           -- , ("tell me a joke", randomJoke)
           -- , ("flip a coin", flipCoin)
           , ("help", help)
-          , ("set a time to (.*) seconds", timer)
+          , ("set a timer to (.*) seconds", timer)
           ]
 
 timer :: BotAction
