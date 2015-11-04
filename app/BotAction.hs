@@ -8,6 +8,8 @@ import Import
 import qualified Data.List.Utils as L
 import System.Random
 import qualified System.Process as SP
+import Prelude (read)
+import Control.Concurrent
 
 type BotAction = (String -> IO (Either String ())) -> [String] -> IO (Either String ())
 
@@ -16,7 +18,14 @@ actions = [ ("what time is it", getTime)
           -- , ("tell me a joke", randomJoke)
           -- , ("flip a coin", flipCoin)
           , ("help", help)
+          , ("set a time to (\\d+) seconds", timer)
           ]
+
+timer :: BotAction
+timer postToSlack [time] = do
+    threadDelay $ (read time) * 1000000
+    postToSlack "Times up!"
+timer _ _ = err "Couldn't parse time"
 
 getTime :: BotAction
 getTime postToSlack _ = do
