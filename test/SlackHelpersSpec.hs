@@ -56,6 +56,11 @@ spec = do
         let commandArgs = fst <$> SH.matchingAction "hest" sampleActions
         commandArgs `shouldBe` Nothing
 
-      it "does things with regex" $ do
-        let regex = R.mkRegex "set a timer to (\d+) seconds"
+    describe "regex matching" $ do
+      it "matches" $ do
+        let regex = R.mkRegex "set a timer to (.+) seconds"
         (Just ["2"]) `shouldBe` (R.matchRegex regex "set a timer to 2 seconds")
+
+      it "matches" $ do
+        let regex = R.mkRegex "set a timer to (.+) seconds?"
+        (Just ["1"]) `shouldBe` (R.matchRegex regex "set a timer to 1 second")
