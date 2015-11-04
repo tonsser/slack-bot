@@ -23,6 +23,7 @@ actions = [ ("what time is it", getTime)
 
 timer :: BotAction
 timer postToSlack [time] = do
+    postToSlack "Starting timer!"
     threadDelay $ (read time) * 1000000
     postToSlack "Times up!"
 timer _ _ = err "Couldn't parse time"
