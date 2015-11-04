@@ -5,6 +5,7 @@ module BotAction
   ) where
 
 import Import
+import Data.Maybe (fromJust)
 import qualified Data.List.Utils as L
 import System.Random
 import qualified System.Process as SP
@@ -15,16 +16,16 @@ type BotAction = (String -> IO (Either String ())) -> [String] -> IO (Either Str
 
 actions :: [(String, BotAction)]
 actions = [ ("what time is it", getTime)
-          -- , ("tell me a joke", randomJoke)
-          -- , ("flip a coin", flipCoin)
+          , ("tell me a joke", randomJoke)
+          , ("flip a coin", flipCoin)
           , ("help", help)
-          , ("set a timer to (.*) seconds", timer)
+          , ("set a timer to (.*) minutes", timer)
           ]
 
 timer :: BotAction
 timer postToSlack [time] = do
     postToSlack "Starting timer!"
-    threadDelay $ (read time) * 1000000
+    threadDelay $ (read time) * 60 * 1000000
     postToSlack "Times up!"
 timer _ _ = err "Couldn't parse time"
 
@@ -37,10 +38,8 @@ getTime postToSlack _ = do
 err :: String -> IO (Either String a)
 err reason = return $ Left reason
 
--- flipCoin :: BotAction
--- flipCoin _ _ = do
---     result <- sample ["heads", "tails"]
---     return $ result
+flipCoin :: BotAction
+flipCoin postToSlack _ = sample ["heads", "tails"] >>= postToSlack . fromJust
 
 help :: BotAction
 help postToSlack _ = postToSlack $ mconcat doc
@@ -59,15 +58,13 @@ nth 0 (x:_) = Just x
 nth n (_:xs) = nth (n - 1) xs
 
 sample :: [a] -> IO (Maybe a)
+sample [] = return Nothing
 sample xs = do
     idx <- randomRIO (0, length xs - 1)
     return $ nth idx xs
 
--- randomJoke :: BotAction
--- randomJoke _ _ = sample [ "one"
---                       , "two"
---                       , "three"
---                       ]
+randomJoke :: BotAction
+randomJoke postToSlack _ = sample ["one", "two", "three"] >>= postToSlack . fromJust
 
 runProcess :: String -> IO String
 runProcess cmd = removeExtraSpaces <$> SP.readProcess cmd [] []
