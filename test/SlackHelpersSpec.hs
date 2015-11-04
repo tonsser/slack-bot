@@ -4,11 +4,15 @@ import TestImport
 import qualified BotAction as BA
 import qualified SlackHelpers as SH
 import SlackTypes
+import qualified Text.Regex as R
+
+nop :: BA.BotAction
+nop _ _ = return $ Right ()
 
 sampleActions :: [(String, BA.BotAction)]
-sampleActions = [ ("foobar", const $ return $ Just "hest!")
-                , ("tell me about (.*)", const $ return $ Just "hest!")
-                , ("what do you (.+) about (.+)", const $ return $ Just "hest!")
+sampleActions = [ ("foobar", nop)
+                , ("tell me about (.*)", nop)
+                , ("what do you (.+) about (.+)", nop)
                 ]
 
 sampleSlackReqest :: SlackRequest
@@ -51,3 +55,7 @@ spec = do
       it "returns Nothing if no action matches" $ do
         let commandArgs = fst <$> SH.matchingAction "hest" sampleActions
         commandArgs `shouldBe` Nothing
+
+      it "does things with regex" $ do
+        let regex = R.mkRegex "set a timer to (.*) seconds"
+        (Just ["2"]) `shouldBe` (R.matchRegex regex "set a timer to 2 seconds")
