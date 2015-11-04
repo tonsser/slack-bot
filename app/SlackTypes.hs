@@ -1,11 +1,19 @@
 module SlackTypes where
 
 import Import
+import qualified Data.Text as T
 
-data SlackResponse = SlackResponse { slackResponseText :: Text }
+data SlackResponse = SlackResponse
+                   { slackResponseText :: Text
+                   , slackResponseChannel :: Text
+                   }
+
+-- "channel": "#other-channel"
 
 instance ToJSON SlackResponse where
-  toJSON (SlackResponse text) = object [ "text" .= text ]
+  toJSON (SlackResponse text channel) = object [ "text" .= text
+                                               , "channel" .= ("#" `T.append` channel)
+                                               ]
 
 data SlackRequest = SlackRequest
                   { slackRequestToken :: Text

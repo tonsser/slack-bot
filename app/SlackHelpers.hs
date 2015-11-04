@@ -2,7 +2,6 @@ module SlackHelpers
     ( textWithoutTriggerWord
     , matchingAction
     , processRequest
-    , ProcessRequestError(..)
     )
   where
 
@@ -12,15 +11,27 @@ import qualified Data.List.Utils as L
 import qualified Data.Text as T
 import qualified Text.Regex as R
 import BotAction
+import qualified Network.HTTP as HTTP
+import Data.Aeson
+import qualified Data.ByteString.Lazy as LBS
+import qualified Data.ByteString.Char8 as BS
 
-data ProcessRequestError = UnknownAction
-                         | UnknownError
+postResponseToSlack :: Text -> Text -> IO ()
+postResponseToSlack channel text =
+    let
+      res = SlackResponse text channel
 
-instance Show ProcessRequestError where
-    show UnknownAction = "Unknown action"
-    show UnknownError = "An error occured..."
+      body :: String
+      body = BS.unpack $ LBS.toStrict $ encode res
 
-processRequest :: SlackRequest -> IO (Either ProcessRequestError SlackResponse)
+      httpReq :: HTTP.Request String
+      httpReq = HTTP.postRequestWithBody
+                  "https://hooks.slack.com/services/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"
+                  "application/json"
+                  body
+    in void $ HTTP.simpleHTTP httpReq
+
+processRequest :: SlackRequest -> IO ()
 processRequest req =
     let
       text :: String
@@ -28,13 +39,20 @@ processRequest req =
 
       match :: Maybe ([String], BotAction)
       match = matchingAction text actions
+
+      channelName :: Text
+      channelName = slackRequestChannelName req
+
+      postString text = do
+        postResponseToSlack channelName $ T.pack text
+        return $ Right ()
     in case match of
-         Nothing -> return $ Left UnknownAction
-         Just (matches, a) -> do
-           res <- (fmap . fmap) (\res -> SlackResponse res) (a matches)
+         Nothing -> void $ postString "Unknown action"
+         Just (matches, action) -> do
+           res <- action postString matches
            case res of
-             Nothing -> return $ Left UnknownError
-             Just x -> return $ Right x
+             Right () -> return ()
+             Left reason -> void $ postString reason
 
 matchingAction :: String -> [(String, BotAction)] -> Maybe ([String], BotAction)
 matchingAction t as = helper t $ map (`mapFst` R.mkRegex) as

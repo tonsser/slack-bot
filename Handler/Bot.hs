@@ -2,6 +2,7 @@ module Handler.Bot where
 
 import Import
 import SlackTypes
+import Control.Concurrent
 import Control.Monad.Trans.Maybe
 import qualified SlackHelpers as SH
 import qualified Data.Set as Set
@@ -56,15 +57,23 @@ listDiff xs ys = Set.elems $ Set.difference (toSet xs) (toSet ys)
   where
     toSet = foldr Set.insert Set.empty
 
-postBotR :: Handler Value
+postBotR :: Handler ()
 postBotR = do
     reqOrErr <- buildSlackRequestFromParams
-    case reqOrErr of
-      Left missing -> error $ T.unpack $ mconcat [ "Missing params: "
-                                                 , T.intercalate ", " missing
-                                                 ]
-      Right req -> do
-        res <- liftIO $ SH.processRequest req
-        case res of
-          Left err -> return $ toJSON $ SlackResponse $ T.pack $ show err
-          Right res' -> return $ toJSON res'
+    _ <- liftIO $ forkIO $ do
+      case reqOrErr of
+        Left missing -> do
+          putStrLn $ mconcat [ "Missing params: "
+                             , T.intercalate ", " missing
+                             ]
+        Right req -> SH.processRequest req
+    return ()
+    -- case reqOrErr of
+    --   Left missing -> error $ T.unpack $ mconcat [ "Missing params: "
+    --                                              , T.intercalate ", " missing
+    --                                              ]
+    --   Right req -> do
+    --     res <- liftIO $ SH.processRequest req
+    --     case res of
+    --       Left err -> return $ toJSON $ SlackResponse $ T.pack $ show err
+    --       Right res' -> return $ toJSON res'

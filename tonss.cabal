@@ -90,6 +90,7 @@ library
                  , regex-compat
                  , process
                  , random
+                 , HTTP
 
 executable         tonss
     if flag(library-only)
