@@ -11,25 +11,30 @@ import qualified Data.List.Utils as L
 import qualified Data.Text as T
 import qualified Text.Regex as R
 import BotAction
-import qualified Network.HTTP as HTTP
+import qualified Network.HTTP.Conduit as HTTP
 import Data.Aeson
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Char8 as BS
 
+
+slackUrl :: String
+slackUrl = "https://hooks.slack.com/services/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"
+
 postResponseToSlack :: Text -> Text -> IO ()
-postResponseToSlack channel text =
+postResponseToSlack channel text = do
+    initReq <- parseUrl slackUrl
     let
       res = SlackResponse text channel
 
-      body :: String
-      body = BS.unpack $ LBS.toStrict $ encode res
+      body :: LBS.ByteString
+      body = encode res
 
-      httpReq :: HTTP.Request String
-      httpReq = HTTP.postRequestWithBody
-                  "https://hooks.slack.com/services/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"
-                  "application/json"
-                  body
-    in void $ HTTP.simpleHTTP httpReq
+      httpReq :: HTTP.Request
+      httpReq = initReq { method = "POST"
+                        , requestBody = RequestBodyLBS body
+                        }
+    man <- HTTP.newManager HTTP.tlsManagerSettings
+    void $ HTTP.httpLbs httpReq man
 
 processRequest :: SlackRequest -> IO ()
 processRequest req =
