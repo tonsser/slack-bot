@@ -11,6 +11,7 @@ import System.Random
 import qualified System.Process as SP
 import Prelude (read)
 import Control.Concurrent
+import Text.Read
 
 type BotAction = (String -> IO (Either String ())) -> [String] -> IO (Either String ())
 
@@ -19,14 +20,21 @@ actions = [ ("what time is it", getTime)
           , ("tell me a joke", randomJoke)
           , ("flip a coin", flipCoin)
           , ("help", help)
-          , ("set a timer to (.*) minutes", timer)
+          , ("set a timer to (\\d) minutes", timer)
+          , ("who should pickup lunch", (\p _ -> p "Not implemented yet"))
           ]
 
 timer :: BotAction
 timer postToSlack [time] = do
-    postToSlack "Starting timer!"
-    threadDelay $ (read time) * 60 * 1000000
-    postToSlack "Times up!"
+    let
+      t :: Maybe Int
+      t = readMaybe time
+    case t of
+      Nothing -> err "Couldn't parse time"
+      Just t' -> do
+        postToSlack "Starting timer!"
+        threadDelay $ t' * 60 * 1000000
+        postToSlack "Times up!"
 timer _ _ = err "Couldn't parse time"
 
 getTime :: BotAction
