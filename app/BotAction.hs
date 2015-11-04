@@ -20,7 +20,7 @@ actions = [ ("what time is it", getTime)
           , ("tell me a joke", randomJoke)
           , ("flip a coin", flipCoin)
           , ("help", help)
-          , ("set a timer to (\\d) minutes", timer)
+          , ("set a timer to (.+) minutes", timer)
           , ("who should pickup lunch", (\p _ -> p "Not implemented yet"))
           ]
 
