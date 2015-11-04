@@ -9,9 +9,11 @@ import Data.Maybe (fromJust)
 import qualified Data.List.Utils as L
 import System.Random
 import qualified System.Process as SP
-import Prelude (read)
 import Control.Concurrent
 import Text.Read
+import qualified Network.HTTP.Conduit as HTTP
+import qualified Data.ByteString.Lazy as LBS
+import qualified Data.ByteString.Char8 as BS
 
 type BotAction = (String -> IO (Either String ())) -> [String] -> IO (Either String ())
 
@@ -21,8 +23,23 @@ actions = [ ("what time is it", getTime)
           , ("flip a coin", flipCoin)
           , ("help", help)
           , ("set a timer to (.+) minutes?", timer)
-          , ("who should pickup lunch", (\p _ -> p "Not implemented yet"))
+          , ("who should pickup lunch", pickupLunch)
+          , ("cat me", cat)
           ]
+
+httpGet :: String -> IO String
+httpGet url = BS.unpack . LBS.toStrict <$> HTTP.simpleHttp url
+
+cat :: BotAction
+cat postToSlack _ = do
+    url <- httpGet "http://thecatapi.com/api/images/get"
+    postToSlack url
+
+pickupLunch :: BotAction
+pickupLunch postToSlack _ = do
+    -- interact with slack api to find list of online users
+    -- pick two at random and return those
+    postToSlack "Not implemented yet"
 
 timer :: BotAction
 timer postToSlack [time] = do
@@ -39,8 +56,8 @@ timer _ _ = err "Couldn't parse time"
 
 getTime :: BotAction
 getTime postToSlack _ = do
-    date <- runProcess "date"
-    let text = mconcat ["The current time is ", date]
+    date <- removeExtraSpaces <$> runProcess "date"
+    let text = mconcat ["The current time is ", date, ", at least where I am"]
     postToSlack text
 
 err :: String -> IO (Either String a)
@@ -75,7 +92,7 @@ randomJoke :: BotAction
 randomJoke postToSlack _ = sample ["one", "two", "three"] >>= postToSlack . fromJust
 
 runProcess :: String -> IO String
-runProcess cmd = removeExtraSpaces <$> SP.readProcess cmd [] []
+runProcess cmd = SP.readProcess cmd [] []
 
 removeExtraSpaces :: String -> String
 removeExtraSpaces = fix (L.replace "  " " ")
