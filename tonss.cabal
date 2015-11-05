@@ -22,6 +22,8 @@ library
                      Settings.StaticFiles
                      Handler.Common
                      Handler.Bot
+                     Handler.SlackAuth
+                     Handler.SlackAuthCallback
                      SlackTypes
                      BotAction
                      SlackHelpers

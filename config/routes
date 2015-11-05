@@ -4,3 +4,5 @@
 /favicon.ico FaviconR GET
 /robots.txt RobotsR GET
 / BotR GET POST
+/slack/auth SlackAuthR GET
+/slack/auth/callback SlackAuthCallbackR GET

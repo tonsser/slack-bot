@@ -38,11 +38,15 @@ postResponseToSlack destination text = do
 
 authenticateAction :: Text -> Text -> BotAction
 authenticateAction username teamId postToSlack _ = do
+    -- TODO: Don't use environment variables here
+    -- TODO: Concat the paths in a nicer way
     appRoot <- lookupEnv "APPROOT"
     case appRoot of
       Nothing -> postToSlack "Error getting APPROOT environment variable"
       Just appRoot' -> do
-        let authUrl = appRoot' ++ "?team_id=" ++ T.unpack teamId
+        let
+          (slackAuth, _) = mapFst (renderRoute SlackAuthR) (T.unpack . T.intercalate "/")
+          authUrl = appRoot' ++ slackAuth ++ "?team_id=" ++ T.unpack teamId
         postResponseToSlack (SlackResponseUsername username) $ T.pack authUrl
         _ <- postToSlack "Check your private messages"
         return $ Right ()
