@@ -46,6 +46,7 @@ authenticateAction username teamId postToSlack _ = do
       Just appRoot' -> do
         let
           (slackAuth, _) = mapFst (renderRoute SlackAuthR) (T.unpack . T.intercalate "/")
+          -- TODO: also add user_id from request
           authUrl = appRoot' ++ slackAuth ++ "?team_id=" ++ T.unpack teamId
         postResponseToSlack (SlackResponseUsername username) $ T.pack authUrl
         _ <- postToSlack "Check your private messages"

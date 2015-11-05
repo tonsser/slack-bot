@@ -1,0 +1,3 @@
+#!/bin/bash
+
+git push && git push heroku master && curl http://warm-river-9355.herokuapp.com 2>&1 > /dev/null && say "Deploy done"

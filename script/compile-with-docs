@@ -1,0 +1,6 @@
+#!/bin/bash
+
+stack install haddocset
+stack exec -- haddocset create
+stack build --haddock
+stack exec -- haddocset add $HOME/.stack/snapshots/x86_64-osx/lts-3.11/7.10.2/pkgdb/*.conf

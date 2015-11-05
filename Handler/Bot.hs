@@ -9,10 +9,8 @@ import qualified Data.Set as Set
 import Data.Maybe (fromJust)
 import qualified Data.Text as T
 
-getBotR :: Handler Value
-getBotR = do
-    let json = toJSON $ ([("foo", "bar")] :: [(String, String)])
-    return json
+getBotR :: Handler Html
+getBotR = defaultLayout $ $(widgetFile "homepage")
 
 type MissingParams = [Text]
 
@@ -60,20 +58,9 @@ listDiff xs ys = Set.elems $ Set.difference (toSet xs) (toSet ys)
 postBotR :: Handler ()
 postBotR = do
     reqOrErr <- buildSlackRequestFromParams
-    _ <- liftIO $ forkIO $ do
-      case reqOrErr of
-        Left missing -> do
-          putStrLn $ mconcat [ "Missing params: "
-                             , T.intercalate ", " missing
-                             ]
-        Right req -> SH.processRequest req
+    _ <- liftIO $ forkIO $ case reqOrErr of
+                             Left missing -> putStrLn $ mconcat [ "Missing params: "
+                                                                , T.intercalate ", " missing
+                                                                ]
+                             Right req -> SH.processRequest req
     return ()
-    -- case reqOrErr of
-    --   Left missing -> error $ T.unpack $ mconcat [ "Missing params: "
-    --                                              , T.intercalate ", " missing
-    --                                              ]
-    --   Right req -> do
-    --     res <- liftIO $ SH.processRequest req
-    --     case res of
-    --       Left err -> return $ toJSON $ SlackResponse $ T.pack $ show err
-    --       Right res' -> return $ toJSON res'
