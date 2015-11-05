@@ -39,7 +39,10 @@ postResponseToSlack destination text = do
 authenticateAction :: Text -> Text -> BotAction
 authenticateAction username teamId postToSlack _ = do
     let (route, _) = mapFst (renderRoute BotR) (T.intercalate "/")
-    postResponseToSlack (SlackResponseUsername username) route
+    putStrLn "------------"
+    putStrLn route
+    putStrLn "------------"
+    -- postResponseToSlack (SlackResponseUsername username) route
     _ <- postToSlack "Check your private messages"
     return $ Right ()
 
