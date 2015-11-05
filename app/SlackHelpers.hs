@@ -10,6 +10,7 @@ import SlackTypes
 import qualified Data.List.Utils as L
 import qualified Data.Text as T
 import qualified Text.Regex as R
+import System.Environment
 import qualified BotAction as BA
 import BotAction (BotAction)
 import qualified Network.HTTP.Conduit as HTTP
@@ -35,11 +36,16 @@ postResponseToSlack destination text = do
     man <- HTTP.newManager HTTP.tlsManagerSettings
     void $ HTTP.httpLbs httpReq man
 
-authenticateAction :: Text -> BotAction
-authenticateAction username postToSlack _ = do
-    postResponseToSlack (SlackResponseUsername username) "<auth link goes here>"
-    _ <- postToSlack "Check your private messages"
-    return $ Right ()
+authenticateAction :: Text -> Text -> BotAction
+authenticateAction username teamId postToSlack _ = do
+    appRoot <- lookupEnv "APPROOT"
+    case appRoot of
+      Nothing -> postToSlack "Error getting APPROOT environment variable"
+      Just appRoot' -> do
+        let authUrl = appRoot' ++ "&team_id = " ++ T.unpack teamId
+        postResponseToSlack (SlackResponseUsername username) $ T.pack authUrl
+        _ <- postToSlack "Check your private messages"
+        return $ Right ()
 
 processRequest :: SlackRequest -> IO ()
 processRequest req =
@@ -48,8 +54,10 @@ processRequest req =
       text = T.unpack $ textWithoutTriggerWord req
 
       match :: Maybe ([String], BotAction)
-      match = matchingAction text $ ("authenticate", authenticateAction username) : BA.actions
+      match = matchingAction text $ authAction : BA.actions
         where username = slackRequestUsername req
+              teamId = slackRequestTeamId req
+              authAction = ("authenticate", authenticateAction username teamId)
 
       destination :: SlackResponseDestination
       destination = SlackResponseChannel $ slackRequestChannelName req
