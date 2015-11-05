@@ -12,7 +12,8 @@ data SlackResponse = SlackResponse
 
 instance ToJSON SlackResponse where
   toJSON (SlackResponse text channel) = object [ "text" .= text
-                                               , "channel" .= ("#" `T.append` channel)
+                                               -- , "channel" .= ("#" `T.append` channel)
+                                               , "channel" .= ("@" `T.append` "david")
                                                ]
 
 data SlackRequest = SlackRequest
