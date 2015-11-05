@@ -1,6 +1,5 @@
 module BotAction
   ( actions
-  , getTime
   , BotAction
   ) where
 
@@ -26,7 +25,13 @@ actions = [ ("what time is it", getTime)
           , ("set a timer to (.+) minutes?", timer)
           , ("who should pickup lunch", pickupLunch)
           , ("cat me", cat)
+          -- `authenticate` is overriden by `SlackHelpers` but has to be here
+          -- otherwise it wont show in `help`
+          , ("authenticate", doNothing)
           ]
+
+doNothing :: BotAction
+doNothing _ _ = return $ Right ()
 
 httpGet :: String -> IO String
 httpGet url = BS.unpack . LBS.toStrict <$> HTTP.simpleHttp url
@@ -39,7 +44,7 @@ cat postToSlack _ = do
       _ -> err "Something went wrong"
 
 pickupLunch :: BotAction
-pickupLunch postToSlack _ = do
+pickupLunch postToSlack _ =
     -- interact with slack api to find list of online users
     -- pick two at random and return those
     postToSlack "Not implemented yet"
@@ -52,7 +57,7 @@ timer postToSlack [time] = do
     case t of
       Nothing -> err "Couldn't parse time"
       Just t' -> do
-        postToSlack "Starting timer!"
+        _ <- postToSlack "Starting timer!"
         threadDelay $ t' * 60 * 1000000
         postToSlack "Times up!"
 timer _ _ = err "Couldn't parse time"

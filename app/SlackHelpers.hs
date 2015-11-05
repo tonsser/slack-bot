@@ -10,7 +10,8 @@ import SlackTypes
 import qualified Data.List.Utils as L
 import qualified Data.Text as T
 import qualified Text.Regex as R
-import BotAction
+import qualified BotAction as BA
+import BotAction (BotAction)
 import qualified Network.HTTP.Conduit as HTTP
 import Data.Aeson
 import qualified Data.ByteString.Lazy as LBS
@@ -18,11 +19,11 @@ import qualified Data.ByteString.Lazy as LBS
 slackUrl :: String
 slackUrl = "https://hooks.slack.com/services/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"
 
-postResponseToSlack :: Text -> Text -> IO ()
-postResponseToSlack channel text = do
+postResponseToSlack :: SlackResponseDestination -> Text -> IO ()
+postResponseToSlack destination text = do
     initReq <- parseUrl slackUrl
     let
-      res = SlackResponse text channel
+      res = SlackResponse text destination
 
       body :: LBS.ByteString
       body = encode res
@@ -34,6 +35,12 @@ postResponseToSlack channel text = do
     man <- HTTP.newManager HTTP.tlsManagerSettings
     void $ HTTP.httpLbs httpReq man
 
+authenticateAction :: Text -> BotAction
+authenticateAction username postToSlack _ = do
+    postResponseToSlack (SlackResponseUsername username) "<auth link goes here>"
+    _ <- postToSlack "Check your private messages"
+    return $ Right ()
+
 processRequest :: SlackRequest -> IO ()
 processRequest req =
     let
@@ -41,13 +48,14 @@ processRequest req =
       text = T.unpack $ textWithoutTriggerWord req
 
       match :: Maybe ([String], BotAction)
-      match = matchingAction text actions
+      match = matchingAction text $ ("authenticate", authenticateAction username) : BA.actions
+        where username = slackRequestUsername req
 
-      channelName :: Text
-      channelName = slackRequestChannelName req
+      destination :: SlackResponseDestination
+      destination = SlackResponseChannel $ slackRequestChannelName req
 
-      postString text = do
-        postResponseToSlack channelName $ T.pack text
+      postString txt = do
+        postResponseToSlack destination $ T.pack txt
         return $ Right ()
     in case match of
          Nothing -> void $ postString "Unknown action"

@@ -3,18 +3,25 @@ module SlackTypes where
 import Import
 import qualified Data.Text as T
 
+data SlackResponseDestination = SlackResponseUsername Text
+                              | SlackResponseChannel Text
+
+showDestination :: SlackResponseDestination -> Text
+showDestination (SlackResponseUsername username) = "@" `T.append` username
+showDestination (SlackResponseChannel channel) = "#" `T.append` channel
+
 data SlackResponse = SlackResponse
                    { slackResponseText :: Text
-                   , slackResponseChannel :: Text
+                   , slackResponseDestination :: SlackResponseDestination
                    }
 
 -- "channel": "#other-channel"
 
 instance ToJSON SlackResponse where
-  toJSON (SlackResponse text channel) = object [ "text" .= text
-                                               -- , "channel" .= ("#" `T.append` channel)
-                                               , "channel" .= ("@" `T.append` "david")
-                                               ]
+    toJSON (SlackResponse text destination) =
+      object [ "text" .= text
+             , "channel" .= showDestination destination
+             ]
 
 data SlackRequest = SlackRequest
                   { slackRequestToken :: Text
