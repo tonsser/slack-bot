@@ -2,6 +2,8 @@ module SlackHelpers
     ( textWithoutTriggerWord
     , matchingAction
     , processRequest
+    , toQueryParams
+    , getAppRoot
     )
   where
 
@@ -36,21 +38,31 @@ postResponseToSlack destination text = do
     man <- HTTP.newManager HTTP.tlsManagerSettings
     void $ HTTP.httpLbs httpReq man
 
-authenticateAction :: Text -> Text -> BotAction
-authenticateAction username teamId postToSlack _ = do
+getAppRoot :: IO String
+getAppRoot = return "http://localhost:3000"
+    -- root <- lookupEnv "APPROOT"
+    -- return $ fromMaybe "http://localhost:3000" root
+
+authenticateAction :: SlackRequest -> BotAction
+authenticateAction req postToSlack _ = do
     -- TODO: Don't use environment variables here
     -- TODO: Concat the paths in a nicer way
-    appRoot <- lookupEnv "APPROOT"
-    case appRoot of
-      Nothing -> postToSlack "Error getting APPROOT environment variable"
-      Just appRoot' -> do
-        let
-          (slackAuth, _) = mapFst (renderRoute SlackAuthR) (T.unpack . T.intercalate "/")
-          -- TODO: also add user_id from request
-          authUrl = appRoot' ++ slackAuth ++ "?team_id=" ++ T.unpack teamId
-        postResponseToSlack (SlackResponseUsername username) $ T.pack authUrl
-        _ <- postToSlack "Check your private messages"
-        return $ Right ()
+    appRoot <- getAppRoot
+    let
+      (slackAuth, _) = mapFst (renderRoute SlackAuthR) (T.unpack . T.intercalate "/")
+      params = [ ("team_id", slackRequestTeamId req)
+               , ("user_id", slackRequestUserId req)
+               ]
+      username = slackRequestUsername req
+      authUrl = appRoot ++ slackAuth ++ T.unpack (toQueryParams params)
+    postResponseToSlack (SlackResponseUsername username) $ T.pack authUrl
+    _ <- postToSlack "Check your private messages"
+    return $ Right ()
+
+toQueryParams :: [(Text, Text)] -> Text
+toQueryParams params = T.append "?" (T.intercalate "&" $ map (uncurry toParam) params)
+  where x +|+ y = T.append x y
+        toParam key value = key +|+ "=" +|+ value
 
 processRequest :: SlackRequest -> IO ()
 processRequest req =
@@ -60,9 +72,7 @@ processRequest req =
 
       match :: Maybe ([String], BotAction)
       match = matchingAction text $ authAction : BA.actions
-        where username = slackRequestUsername req
-              teamId = slackRequestTeamId req
-              authAction = ("authenticate", authenticateAction username teamId)
+        where authAction = ("authenticate", authenticateAction req)
 
       destination :: SlackResponseDestination
       destination = SlackResponseChannel $ slackRequestChannelName req

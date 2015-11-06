@@ -1,9 +1,11 @@
 module Handler.SlackAuth where
 
 import Import
+import qualified Data.Text as T
+import SlackHelpers
 
-getSlackAuthR :: Handler Html
-getSlackAuthR =
+getSlackAuthR :: Handler ()
+getSlackAuthR = do
     -- redirect to https://slack.com/oauth/authorize
     --
     -- With params:
@@ -15,7 +17,6 @@ getSlackAuthR =
     --
     -- team is in get params as team_id
     --
-    -- TODO: Set client_id in settings somehow
     -- TODO: Set client_secret in settings somehow
     -- TODO: Figure out which scopes I'll need
     --
@@ -23,4 +24,17 @@ getSlackAuthR =
     -- database
     -- on future requests look up the token from the user_id and
     -- use that token for slack api calls
-    error "Not yet implemented: getSlackAuthR"
+    params <- catMaybes <$> mapM lookupGetParam ["user_id", "team_id"]
+    case params of
+      [_userId, teamId] -> do
+        appRoot <- liftIO getAppRoot
+        let
+          queryParams = toQueryParams [ ("team", teamId)
+                                      , ("redirect_uri", T.pack appRoot)
+                                      -- TODO: Store in settings
+                                      , ("client_id", "13857431237.13932343510")
+                                      , ("scope", "users:read")
+                                      ]
+        url <- toTextUrl $ "https://slack.com/oauth/authorize" `T.append` queryParams
+        redirect url
+      _ -> invalidArgs ["user_id", "team_id"]

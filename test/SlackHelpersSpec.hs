@@ -56,6 +56,11 @@ spec = do
         let commandArgs = fst <$> SH.matchingAction "hest" sampleActions
         commandArgs `shouldBe` Nothing
 
+    describe "toQueryParams" $ do
+      it "converts a list of params to queries" $ do
+        let query = SH.toQueryParams [("foo", "bar"), ("baz", "qux")]
+        "?foo=bar&baz=qux" `shouldBe` query
+
     describe "regex matching" $ do
       it "matches" $ do
         let regex = R.mkRegex "set a timer to (.+) seconds"
