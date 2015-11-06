@@ -15,7 +15,10 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Char8 as BS
 import Text.Regex
 
-type BotAction = (String -> IO (Either String ())) -> [String] -> IO (Either String ())
+type BotAction = PostToSlack -> CommandMatches -> IO (Either ErrorMsg ())
+type CommandMatches = [String]
+type PostToSlack = String -> IO (Either ErrorMsg ())
+type ErrorMsg = String
 
 actions :: [(String, BotAction)]
 actions = [ ("what time is it", getTime)
