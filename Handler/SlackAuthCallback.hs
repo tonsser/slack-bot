@@ -24,6 +24,6 @@ getSlackAuthCallbackR = do
   userId <- lookUpWithDefault (invalidArgs ["slackUserId"]) (lookupSession "slackUserId")
   code <- lookUpWithDefault (invalidArgs ["code"]) (lookupGetParam "code")
   json <- fromMaybe (error "slack error") <$> liftIO (oauthAccess code Nothing)
-  let accessToken = fromMaybe (error "couldn't parse json from slack") (json ^? key "access_token" . _String)
+  let accessToken = fromMaybe (error $ show json) (json ^? key "access_token" . _String)
   _ <- runDB $ insert User { userAccessToken = accessToken, userSlackUserId = userId }
   defaultLayout $(widgetFile "oauth_success")
