@@ -58,9 +58,20 @@ listDiff xs ys = Set.elems $ Set.difference (toSet xs) (toSet ys)
 postBotR :: Handler ()
 postBotR = do
     reqOrErr <- buildSlackRequestFromParams
+    accessToken <- getAccessTokenForAuthenticatedUser
     _ <- liftIO $ forkIO $ case reqOrErr of
                              Left missing -> putStrLn $ mconcat [ "Missing params: "
                                                                 , T.intercalate ", " missing
                                                                 ]
-                             Right req -> SH.processRequest req
+                             Right req -> SH.processRequest accessToken req
     return ()
+
+
+getAccessTokenForAuthenticatedUser :: Handler (Maybe Text)
+getAccessTokenForAuthenticatedUser = runMaybeT $ do
+    slackUserId <- MaybeT $ lookupSession "slackUserId"
+    user <- MaybeT $ findUserWithFilters [UserSlackUserId ==. slackUserId]
+    return $ userSlackUserId user
+
+findUserWithFilters :: [Filter User] -> Handler (Maybe User)
+findUserWithFilters filters = (fmap . fmap) entityVal (runDB $ selectFirst filters [])

@@ -1,6 +1,6 @@
 module BotAction
   ( actions
-  , BotAction
+  , BotAction (..)
   , fix
   ) where
 
@@ -16,44 +16,61 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Char8 as BS
 import Text.Regex
 
-type BotAction = PostToSlack -> CommandMatches -> IO (Either ErrorMsg ())
+-- type BotAction = PostToSlack -> CommandMatches -> IO (Either ErrorMsg ())
 type CommandMatches = [String]
 type PostToSlack = String -> IO (Either ErrorMsg ())
 type ErrorMsg = String
+type AccessToken = String
+
+type UnauthenticatedActionHandler = (PostToSlack -> CommandMatches -> IO (Either ErrorMsg ()))
+type AuthenticatedActionHandler = (AccessToken -> PostToSlack -> CommandMatches -> IO (Either ErrorMsg ()))
+
+data BotAction = UnauthticatedAction UnauthenticatedActionHandler
+               | AuthenticatedAction AuthenticatedActionHandler
 
 actions :: [(String, BotAction)]
-actions = [ ("what time is it", getTime)
-          , ("tell me a joke", randomJoke)
-          , ("flip a coin", flipCoin)
-          , ("help", help)
-          , ("set a timer to (.+) minutes?", timer)
-          , ("who should pickup lunch", pickupLunch)
-          , ("cat me", cat)
+actions = [ ("what time is it", UnauthticatedAction getTime)
+          , ("tell me a joke", UnauthticatedAction randomJoke)
+          , ("flip a coin", UnauthticatedAction flipCoin)
+          , ("help", UnauthticatedAction help)
+          , ("set a timer to (.+) minutes?", UnauthticatedAction timer)
+          , ("who should pickup lunch", UnauthticatedAction pickupLunch)
+          , ("cat me", UnauthticatedAction cat)
+          , ("whos there", AuthenticatedAction whosThere)
           -- `authenticate` is overriden by `SlackHelpers` but has to be here
           -- otherwise it wont show in `help`
-          , ("authenticate", doNothing)
+          , ("authenticate", UnauthticatedAction doNothing)
           ]
 
-doNothing :: BotAction
+whosThere :: AuthenticatedActionHandler
+whosThere accessToken postToSlack _ = postToSlack $ "Your access token is " ++ accessToken
+
+getTime :: UnauthenticatedActionHandler
+getTime postToSlack _ = do
+    date <- removeExtraSpaces <$> runProcess "date"
+    let text = mconcat ["The current time is ", date, ", at least where I am"]
+    postToSlack text
+
+doNothing :: UnauthenticatedActionHandler
 doNothing _ _ = return $ Right ()
 
 httpGet :: String -> IO String
 httpGet url = BS.unpack . LBS.toStrict <$> HTTP.simpleHttp url
 
-cat :: BotAction
+cat :: UnauthenticatedActionHandler
 cat postToSlack _ = do
     resp <- httpGet "http://thecatapi.com/api/images/get?format=xml"
     case matchRegex (mkRegex "<url>(.*)</url>") resp of
       Just [url] -> postToSlack url
       _ -> err "Something went wrong"
 
-pickupLunch :: BotAction
+pickupLunch :: UnauthenticatedActionHandler
 pickupLunch postToSlack _ =
     -- interact with slack api to find list of online users
     -- pick two at random and return those
     postToSlack "Not implemented yet"
 
-timer :: BotAction
+timer :: UnauthenticatedActionHandler
 timer postToSlack [time] = do
     let
       t :: Maybe Int
@@ -66,19 +83,13 @@ timer postToSlack [time] = do
         postToSlack "Times up!"
 timer _ _ = err "Couldn't parse time"
 
-getTime :: BotAction
-getTime postToSlack _ = do
-    date <- removeExtraSpaces <$> runProcess "date"
-    let text = mconcat ["The current time is ", date, ", at least where I am"]
-    postToSlack text
-
 err :: String -> IO (Either String a)
 err reason = return $ Left reason
 
-flipCoin :: BotAction
+flipCoin :: UnauthenticatedActionHandler
 flipCoin postToSlack _ = sample ["heads", "tails"] >>= postToSlack . fromJust
 
-help :: BotAction
+help :: UnauthenticatedActionHandler
 help postToSlack _ = postToSlack $ mconcat doc
   where
     commands :: [String]
@@ -100,7 +111,7 @@ sample xs = do
     idx <- randomRIO (0, length xs - 1)
     return $ nth idx xs
 
-randomJoke :: BotAction
+randomJoke :: UnauthenticatedActionHandler
 randomJoke postToSlack _ = sample ["one", "two", "three"] >>= postToSlack . fromJust
 
 runProcess :: String -> IO String

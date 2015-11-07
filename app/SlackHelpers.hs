@@ -52,7 +52,7 @@ getAppRoot = do
     return $ fromMaybe "http://localhost:3000/" root
 
 authenticateAction :: SlackRequest -> BotAction
-authenticateAction req postToSlack _ = do
+authenticateAction req = BA.UnauthticatedAction $ \postToSlack _ -> do
     -- TODO: Don't use environment variables here
     -- TODO: Concat the paths in a nicer way
     appRoot <- getAppRoot
@@ -72,8 +72,8 @@ toQueryParams params = T.append "?" (T.intercalate "&" $ map (uncurry toParam) p
   where x +|+ y = T.append x y
         toParam key value = key +|+ "=" +|+ value
 
-processRequest :: SlackRequest -> IO ()
-processRequest req =
+processRequest :: Maybe Text -> SlackRequest -> IO ()
+processRequest accessTokenM req =
     let
       text :: String
       text = T.unpack $ textWithoutTriggerWord req
@@ -90,11 +90,22 @@ processRequest req =
         return $ Right ()
     in case match of
          Nothing -> void $ postString "Unknown action"
-         Just (matches, action) -> do
-           res <- action postString matches
-           case res of
-             Right () -> return ()
-             Left reason -> void $ postString reason
+         Just (matches, action) ->
+           case action of
+             BA.UnauthticatedAction action' -> do
+               res <- action' postString matches
+               case res of
+                 Right () -> return ()
+                 Left reason -> void $ postString reason
+
+             BA.AuthenticatedAction action' ->
+               case accessTokenM of
+                 Nothing -> void $ postString "Unauthenticated"
+                 Just accessToken -> do
+                   res <- action' (unpack accessToken) postString matches
+                   case res of
+                     Right () -> return ()
+                     Left reason -> void $ postString reason
 
 matchingAction :: String -> [(String, BotAction)] -> Maybe ([String], BotAction)
 matchingAction t as = helper t $ map (mapFst R.mkRegex) as

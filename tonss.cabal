@@ -27,6 +27,8 @@ library
                      SlackTypes
                      BotAction
                      SlackHelpers
+                     SlackAPI
+                     EnvHelpers
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT
@@ -93,6 +95,9 @@ library
                  , process
                  , random
                  , http-conduit
+                 , lens-aeson
+                 , lens
+                 , split
 
 executable         tonss
     if flag(library-only)
