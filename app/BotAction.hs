@@ -45,8 +45,10 @@ actions = [ ("what time is it", UnauthticatedAction getTime)
 
 whosThere :: AuthenticatedActionHandler
 whosThere accessToken postToSlack _ = do
-    json <- usersList accessToken
-    postToSlack $ show json
+    users <- usersList accessToken
+    case users of
+      Nothing -> postToSlack "Problem with slack" >> postToSlack (show users)
+      Just users' -> postToSlack $ intercalate ", " $ map slackUserName users'
 
 getTime :: UnauthenticatedActionHandler
 getTime postToSlack _ = do

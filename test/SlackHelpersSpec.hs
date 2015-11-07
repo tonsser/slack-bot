@@ -6,13 +6,12 @@ import qualified SlackHelpers as SH
 import SlackTypes
 import qualified Text.Regex as R
 
-nop :: BA.BotAction
 nop _ _ = return $ Right ()
 
 sampleActions :: [(String, BA.BotAction)]
-sampleActions = [ ("foobar", nop)
-                , ("tell me about (.*)", nop)
-                , ("what do you (.+) about (.+)", nop)
+sampleActions = [ ("foobar", BA.UnauthticatedAction nop)
+                , ("tell me about (.*)", BA.UnauthticatedAction nop)
+                , ("what do you (.+) about (.+)", BA.UnauthticatedAction nop)
                 ]
 
 sampleSlackReqest :: SlackRequest
@@ -56,11 +55,6 @@ spec = do
         let commandArgs = fst <$> SH.matchingAction "hest" sampleActions
         commandArgs `shouldBe` Nothing
 
-    describe "toQueryParams" $ do
-      it "converts a list of params to queries" $ do
-        let query = SH.toQueryParams [("foo", "bar"), ("baz", "qux")]
-        "?foo=bar&baz=qux" `shouldBe` query
-
     describe "regex matching" $ do
       it "matches" $ do
         let regex = R.mkRegex "set a timer to (.+) seconds"
@@ -69,13 +63,3 @@ spec = do
       it "matches" $ do
         let regex = R.mkRegex "set a timer to (.+) seconds?"
         (Just ["1"]) `shouldBe` (R.matchRegex regex "set a timer to 1 second")
-
-    describe "concat paths" $ do
-      it "concats paths" $ do
-        "foo/bar" `shouldBe` (SH.concatPaths ["foo", "bar"])
-
-      it "avoids duplicate slashes" $ do
-        "/foo/bar/" `shouldBe` (SH.concatPaths ["/foo//", "bar/"])
-
-      it "allow duplicate slashes in the protocol" $ do
-        (SH.concatPaths ["http://foo/", "/bar"]) `shouldBe` "http://foo/bar"

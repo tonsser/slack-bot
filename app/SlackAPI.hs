@@ -3,6 +3,7 @@ module SlackAPI
     , usersList
     , endPointWithParams
     , ApiMethod (..)
+    , SlackUser (..)
     )
   where
 
@@ -12,15 +13,38 @@ import UrlHelpers
 import Data.Aeson
 import System.Environment
 import qualified Data.Text as T
+import Control.Monad.Trans.Maybe
+import Data.Aeson.Lens
+import Control.Lens
+import qualified Data.Vector as V
+
+data SlackUser = SlackUser
+               { slackUserName :: String
+               } deriving (Show)
+
+instance FromJSON SlackUser where
+    parseJSON (Object v) = SlackUser <$>
+                           v .: "name"
+    parseJSON _ = mzero
+
+usersList :: Text -> IO (Maybe [SlackUser])
+usersList accessToken = runMaybeT $ do
+    response <- MaybeT $ runEndPoint UsersList [ ("token", accessToken)
+                                               , ("presence", "1")
+                                               ]
+    ms <- MaybeT $ return $ response ^? key "members" . _Array
+    MaybeT $ return $ parseSlackUsers ms
+
+parseSlackUsers :: Vector Value -> Maybe [SlackUser]
+parseSlackUsers = sequence . V.toList . V.map (successOrNothing . fromJSON)
+
+successOrNothing :: Result a -> Maybe a
+successOrNothing (Success x) = Just x
+successOrNothing _ = Nothing
 
 -- TODO: Remove redirectUri parameter, its not used
 oauthAccess :: Text -> Maybe Text -> IO (Maybe Value)
 oauthAccess code _redirectId = runEndPoint OauthAccess [("code", code)]
-
-usersList :: Text -> IO (Maybe Value)
-usersList accessToken = runEndPoint UsersList [ ("token", accessToken)
-                                                , ("presence", "1")
-                                                ]
 
 clientId :: IO (Maybe Text)
 clientId = fmap pack <$> lookupEnv "TONSS_SLACK_CLIENT_ID"
