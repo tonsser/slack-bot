@@ -72,7 +72,10 @@ spec = do
 
     describe "concat paths" $ do
       it "concats paths" $ do
-        "/foo/bar" `shouldBe` (SH.concatPaths ["foo", "bar"])
+        "foo/bar" `shouldBe` (SH.concatPaths ["foo", "bar"])
 
       it "avoids duplicate slashes" $ do
         "/foo/bar/" `shouldBe` (SH.concatPaths ["/foo//", "bar/"])
+
+      it "allow duplicate slashes in the protocol" $ do
+        (SH.concatPaths ["http://foo/", "/bar"]) `shouldBe` "http://foo/bar"

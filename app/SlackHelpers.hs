@@ -41,13 +41,15 @@ postResponseToSlack destination text = do
     void $ HTTP.httpLbs httpReq man
 
 concatPaths :: [Text] -> Text
-concatPaths = removeDuplicateSlashes . T.append "/" . T.intercalate "/"
+concatPaths = fixHttpProtocol . fixHttpsProtocol . removeDuplicateSlashes . T.intercalate "/"
   where removeDuplicateSlashes = fix (T.pack . L.replace "//" "/" . T.unpack)
+        fixHttpProtocol = T.pack . L.replace "http:/" "http://" . T.unpack
+        fixHttpsProtocol = T.pack . L.replace "https:/" "https://" . T.unpack
 
 getAppRoot :: IO String
-getAppRoot = return "http://localhost:3000/"
-    -- root <- lookupEnv "APPROOT"
-    -- return $ fromMaybe "http://localhost:3000/" root
+getAppRoot = do
+    root <- fmap (++ "/") <$> lookupEnv "APPROOT"
+    return $ fromMaybe "http://localhost:3000/" root
 
 authenticateAction :: SlackRequest -> BotAction
 authenticateAction req postToSlack _ = do
