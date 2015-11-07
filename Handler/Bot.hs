@@ -71,7 +71,7 @@ postBotR = do
 getAccessTokenForUserWithSlackId :: Text -> Handler (Maybe Text)
 getAccessTokenForUserWithSlackId slackUserId = runMaybeT $ do
     user <- MaybeT $ findUserWithFilters [UserSlackUserId ==. slackUserId]
-    return $ userSlackUserId user
+    return $ userAccessToken user
 
 findUserWithFilters :: [Filter User] -> Handler (Maybe User)
 findUserWithFilters filters = (fmap . fmap) entityVal (runDB $ selectFirst filters [])
