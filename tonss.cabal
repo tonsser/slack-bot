@@ -29,6 +29,7 @@ library
                      SlackHelpers
                      SlackAPI
                      EnvHelpers
+                     UrlHelpers
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT

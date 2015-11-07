@@ -3,6 +3,7 @@ module Handler.SlackAuth where
 import Import
 import qualified Data.Text as T
 import SlackHelpers
+import UrlHelpers
 
 getSlackAuthR :: Handler Html
 getSlackAuthR = do

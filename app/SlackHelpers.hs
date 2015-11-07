@@ -2,7 +2,6 @@ module SlackHelpers
     ( textWithoutTriggerWord
     , matchingAction
     , processRequest
-    , toQueryParams
     , getAppRoot
     , concatPaths
     , mapFst
@@ -15,6 +14,7 @@ import qualified Data.List.Utils as L
 import qualified Data.Text as T
 import qualified Text.Regex as R
 import System.Environment
+import UrlHelpers
 import qualified BotAction as BA
 import BotAction (BotAction, fix)
 import qualified Network.HTTP.Conduit as HTTP
@@ -40,17 +40,6 @@ postResponseToSlack destination text = do
     man <- HTTP.newManager HTTP.tlsManagerSettings
     void $ HTTP.httpLbs httpReq man
 
-concatPaths :: [Text] -> Text
-concatPaths = fixHttpProtocol . fixHttpsProtocol . removeDuplicateSlashes . T.intercalate "/"
-  where removeDuplicateSlashes = fix (T.pack . L.replace "//" "/" . T.unpack)
-        fixHttpProtocol = T.pack . L.replace "http:/" "http://" . T.unpack
-        fixHttpsProtocol = T.pack . L.replace "https:/" "https://" . T.unpack
-
-getAppRoot :: IO String
-getAppRoot = do
-    root <- fmap (++ "/") <$> lookupEnv "APPROOT"
-    return $ fromMaybe "http://localhost:3000/" root
-
 authenticateAction :: SlackRequest -> BotAction
 authenticateAction req = BA.UnauthticatedAction $ \postToSlack _ -> do
     -- TODO: Don't use environment variables here
@@ -66,11 +55,6 @@ authenticateAction req = BA.UnauthticatedAction $ \postToSlack _ -> do
     postResponseToSlack (SlackResponseUsername username) $ T.pack authUrl
     _ <- postToSlack "Check your private messages"
     return $ Right ()
-
-toQueryParams :: [(Text, Text)] -> Text
-toQueryParams params = T.append "?" (T.intercalate "&" $ map (uncurry toParam) params)
-  where x +|+ y = T.append x y
-        toParam key value = key +|+ "=" +|+ value
 
 processRequest :: Maybe Text -> SlackRequest -> IO ()
 processRequest accessTokenM req =
@@ -102,7 +86,7 @@ processRequest accessTokenM req =
                case accessTokenM of
                  Nothing -> void $ postString "Unauthenticated"
                  Just accessToken -> do
-                   res <- action' (unpack accessToken) postString matches
+                   res <- action' accessToken postString matches
                    case res of
                      Right () -> return ()
                      Left reason -> void $ postString reason

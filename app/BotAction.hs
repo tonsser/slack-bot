@@ -15,12 +15,13 @@ import qualified Network.HTTP.Conduit as HTTP
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Char8 as BS
 import Text.Regex
+import UrlHelpers
+import SlackAPI
 
--- type BotAction = PostToSlack -> CommandMatches -> IO (Either ErrorMsg ())
 type CommandMatches = [String]
 type PostToSlack = String -> IO (Either ErrorMsg ())
 type ErrorMsg = String
-type AccessToken = String
+type AccessToken = Text
 
 type UnauthenticatedActionHandler = (PostToSlack -> CommandMatches -> IO (Either ErrorMsg ()))
 type AuthenticatedActionHandler = (AccessToken -> PostToSlack -> CommandMatches -> IO (Either ErrorMsg ()))
@@ -43,7 +44,9 @@ actions = [ ("what time is it", UnauthticatedAction getTime)
           ]
 
 whosThere :: AuthenticatedActionHandler
-whosThere accessToken postToSlack _ = postToSlack $ "Your access token is " ++ accessToken
+whosThere accessToken postToSlack _ = do
+    json <- usersList accessToken
+    postToSlack $ show json
 
 getTime :: UnauthenticatedActionHandler
 getTime postToSlack _ = do
@@ -119,9 +122,3 @@ runProcess cmd = SP.readProcess cmd [] []
 
 removeExtraSpaces :: String -> String
 removeExtraSpaces = fix (L.replace "  " " ")
-
-fix :: (Eq a) => (a -> a) -> a -> a
-fix f x = let x' = f x
-              in if x == x'
-                   then x'
-                   else fix f x'
