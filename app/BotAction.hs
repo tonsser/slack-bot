@@ -1,6 +1,7 @@
 module BotAction
   ( actions
   , BotAction
+  , fix
   ) where
 
 import Import

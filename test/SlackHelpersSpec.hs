@@ -69,3 +69,10 @@ spec = do
       it "matches" $ do
         let regex = R.mkRegex "set a timer to (.+) seconds?"
         (Just ["1"]) `shouldBe` (R.matchRegex regex "set a timer to 1 second")
+
+    describe "concat paths" $ do
+      it "concats paths" $ do
+        "/foo/bar" `shouldBe` (SH.concatPaths ["foo", "bar"])
+
+      it "avoids duplicate slashes" $ do
+        "/foo/bar/" `shouldBe` (SH.concatPaths ["/foo//", "bar/"])

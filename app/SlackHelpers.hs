@@ -4,6 +4,8 @@ module SlackHelpers
     , processRequest
     , toQueryParams
     , getAppRoot
+    , concatPaths
+    , mapFst
     )
   where
 
@@ -14,7 +16,7 @@ import qualified Data.Text as T
 import qualified Text.Regex as R
 import System.Environment
 import qualified BotAction as BA
-import BotAction (BotAction)
+import BotAction (BotAction, fix)
 import qualified Network.HTTP.Conduit as HTTP
 import Data.Aeson
 import qualified Data.ByteString.Lazy as LBS
@@ -38,10 +40,14 @@ postResponseToSlack destination text = do
     man <- HTTP.newManager HTTP.tlsManagerSettings
     void $ HTTP.httpLbs httpReq man
 
+concatPaths :: [Text] -> Text
+concatPaths = removeDuplicateSlashes . T.append "/" . T.intercalate "/"
+  where removeDuplicateSlashes = fix (T.pack . L.replace "//" "/" . T.unpack)
+
 getAppRoot :: IO String
-getAppRoot = return "http://localhost:3000"
+getAppRoot = return "http://localhost:3000/"
     -- root <- lookupEnv "APPROOT"
-    -- return $ fromMaybe "http://localhost:3000" root
+    -- return $ fromMaybe "http://localhost:3000/" root
 
 authenticateAction :: SlackRequest -> BotAction
 authenticateAction req postToSlack _ = do
@@ -49,7 +55,7 @@ authenticateAction req postToSlack _ = do
     -- TODO: Concat the paths in a nicer way
     appRoot <- getAppRoot
     let
-      (slackAuth, _) = mapFst (renderRoute SlackAuthR) (T.unpack . T.intercalate "/")
+      (slackAuth, _) = mapFst (T.unpack . T.intercalate "/") (renderRoute SlackAuthR)
       params = [ ("team_id", slackRequestTeamId req)
                , ("user_id", slackRequestUserId req)
                ]
@@ -89,7 +95,7 @@ processRequest req =
              Left reason -> void $ postString reason
 
 matchingAction :: String -> [(String, BotAction)] -> Maybe ([String], BotAction)
-matchingAction t as = helper t $ map (`mapFst` R.mkRegex) as
+matchingAction t as = helper t $ map (mapFst R.mkRegex) as
   where
     helper :: String -> [(R.Regex, BotAction)] -> Maybe ([String], BotAction)
     helper _ [] = Nothing
@@ -107,5 +113,5 @@ textWithoutTriggerWord req = T.strip $ T.pack $ L.replace (triggerWord req) "" $
     triggerWord :: SlackRequest -> String
     triggerWord = T.unpack . slackRequestTriggerWord
 
-mapFst :: (a, b) -> (a -> c) -> (c, b)
-mapFst (a, b) f = (f a, b)
+mapFst :: (a -> c) ->  (a, b) -> (c, b)
+mapFst f (a, b) = (f a, b)

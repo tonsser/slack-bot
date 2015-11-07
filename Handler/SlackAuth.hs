@@ -29,8 +29,10 @@ getSlackAuthR = do
       [_userId, teamId] -> do
         appRoot <- liftIO getAppRoot
         let
+          (callback, _) = renderRoute SlackAuthCallbackR
+          redirectUri = concatPaths $ T.pack appRoot : callback
           queryParams = toQueryParams [ ("team", teamId)
-                                      , ("redirect_uri", T.pack appRoot)
+                                      , ("redirect_uri", redirectUri)
                                       -- TODO: Store in settings
                                       , ("client_id", "13857431237.13932343510")
                                       , ("scope", "users:read")
