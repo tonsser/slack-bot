@@ -13,10 +13,9 @@ import SlackTypes
 import qualified Data.List.Utils as L
 import qualified Data.Text as T
 import qualified Text.Regex as R
-import System.Environment
 import UrlHelpers
 import qualified BotAction as BA
-import BotAction (BotAction, fix)
+import BotAction (BotAction)
 import qualified Network.HTTP.Conduit as HTTP
 import Data.Aeson
 import qualified Data.ByteString.Lazy as LBS
@@ -84,7 +83,7 @@ processRequest accessTokenM req =
 
              BA.AuthenticatedAction action' ->
                case accessTokenM of
-                 Nothing -> void $ postString "Unauthenticated"
+                 Nothing -> void $ postString "Authenticate required, type: bot authenticate"
                  Just accessToken -> do
                    res <- action' accessToken postString matches
                    case res of

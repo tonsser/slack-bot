@@ -41,14 +41,40 @@ actions = [ ("what time is it", UnauthticatedAction getTime)
           -- `authenticate` is overriden by `SlackHelpers` but has to be here
           -- otherwise it wont show in `help`
           , ("authenticate", UnauthticatedAction doNothing)
+          , ("is it time for coffee", UnauthticatedAction coffeeTime)
+          , ("whats a functor", UnauthticatedAction whatsFunctor)
+          , ("whats an applicative", UnauthticatedAction whatsApplicative)
+          , ("whats a monad", UnauthticatedAction whatsMonad)
           ]
+
+whatsFunctor :: UnauthenticatedActionHandler
+whatsFunctor postToSlack _ = postToSlack $ mconcat [ "class Functor (f :: * -> *) where\n"
+                                                   , "  fmap :: (a -> b) -> f a -> f b"
+                                                   ]
+
+whatsApplicative :: UnauthenticatedActionHandler
+whatsApplicative postToSlack _ = postToSlack $ mconcat [ "class Functor f => Applicative (f :: * -> *) where\n"
+                                                       , "  pure :: a -> f a\n"
+                                                       , "  (<*>) :: f (a -> b) -> f a -> f b"
+                                                       ]
+
+whatsMonad :: UnauthenticatedActionHandler
+whatsMonad postToSlack _ = postToSlack $ mconcat [ "class Applicative m => Monad (m :: * -> *) where\n"
+                                                 , "  (>>=) :: m a -> (a -> m b) -> m b\n"
+                                                 , "  return :: a -> m a"
+                                                 ]
+
+coffeeTime :: UnauthenticatedActionHandler
+coffeeTime postToSlack _ = postToSlack "Let me check on that" >> postToSlack "Yes it is!"
 
 whosThere :: AuthenticatedActionHandler
 whosThere accessToken postToSlack _ = do
     users <- usersList accessToken
     case users of
-      Nothing -> postToSlack "Problem with slack" >> postToSlack (show users)
-      Just users' -> postToSlack $ intercalate ", " $ map slackUserName users'
+      Nothing -> postToSlack "Problem with slack"
+      Just users' -> let x = mconcat ["Online users: ", list]
+                           where list = intercalate ", " $ map slackUserName users'
+                     in postToSlack x
 
 getTime :: UnauthenticatedActionHandler
 getTime postToSlack _ = do
@@ -117,7 +143,10 @@ sample xs = do
     return $ nth idx xs
 
 randomJoke :: UnauthenticatedActionHandler
-randomJoke postToSlack _ = sample ["one", "two", "three"] >>= postToSlack . fromJust
+randomJoke postToSlack _ = sample [ "one"
+                                  , "two"
+                                  , "three"
+                                  ] >>= postToSlack . fromJust
 
 runProcess :: String -> IO String
 runProcess cmd = SP.readProcess cmd [] []

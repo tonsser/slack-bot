@@ -32,8 +32,14 @@ usersList accessToken = runMaybeT $ do
     response <- MaybeT $ runEndPoint UsersList [ ("token", accessToken)
                                                , ("presence", "1")
                                                ]
-    ms <- MaybeT $ return $ response ^? key "members" . _Array
-    MaybeT $ return $ parseSlackUsers ms
+    allMembers <- MaybeT $ return $ response ^? key "members" . _Array
+    let presentMembers = filter userIsPresent allMembers
+    MaybeT $ return $ parseSlackUsers presentMembers
+
+userIsPresent :: Value -> Bool
+userIsPresent user = presence == Just "active"
+    where
+      presence = user ^? key "presence" . _String
 
 parseSlackUsers :: Vector Value -> Maybe [SlackUser]
 parseSlackUsers = sequence . V.toList . V.map (successOrNothing . fromJSON)
