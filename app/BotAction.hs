@@ -17,6 +17,9 @@ import qualified Data.ByteString.Char8 as BS
 import Text.Regex
 import UrlHelpers
 import SlackAPI
+import Data.Aeson
+import Data.Aeson.Lens
+import Control.Lens
 
 type CommandMatches = [String]
 type PostToSlack = String -> IO (Either ErrorMsg ())
@@ -45,7 +48,23 @@ actions = [ ("what time is it", UnauthticatedAction getTime)
           , ("whats a functor", UnauthticatedAction whatsFunctor)
           , ("whats an applicative", UnauthticatedAction whatsApplicative)
           , ("whats a monad", UnauthticatedAction whatsMonad)
+          , ("tell me about (.*)", UnauthticatedAction tellMeAbout)
           ]
+
+tellMeAbout :: UnauthenticatedActionHandler
+tellMeAbout postToSlack args = do
+    let pharse = intercalate "+" args
+    response <- HTTP.simpleHttp $ "http://api.duckduckgo.com/?q=" ++ pharse ++ "&format=json"
+    let
+      answer :: Maybe String
+      answer = decode response >>= liftM2 (<|>) abstractAnswer relatedTopic
+
+      abstractAnswer :: Value -> Maybe String
+      abstractAnswer v = unpack <$> v ^? key "AbstractText" . _String
+
+      relatedTopic :: Value -> Maybe String
+      relatedTopic v = unpack <$> v ^? key "RelatedTopics" . nth 0 . key "Text" . _String
+    postToSlack $ fromMaybe "Don't know anything about that" answer
 
 whatsFunctor :: UnauthenticatedActionHandler
 whatsFunctor postToSlack _ = postToSlack $ mconcat [ "class Functor (f :: * -> *) where\n"
