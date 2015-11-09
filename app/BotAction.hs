@@ -62,7 +62,9 @@ imgMe postToSlack args = do
       answer = decode response >>= getImage
 
       getImage :: Value -> Maybe String
-      getImage v = unpack <$> v ^? key "RelatedTopics" . nth 0 . key "Icon" . key "URL" . _String
+      getImage v = case unpack <$> v ^? key "RelatedTopics" . nth 0 . key "Icon" . key "URL" . _String of
+                     Just "" -> Nothing
+                     x -> x
     postToSlack $ fromMaybe "Couldn't find any images about that" answer
 
 tellMeAbout :: UnauthenticatedActionHandler
