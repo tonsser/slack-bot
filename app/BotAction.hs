@@ -60,7 +60,9 @@ tellMeAbout postToSlack args = do
       answer = decode response >>= liftM2 (<|>) abstractAnswer relatedTopic
 
       abstractAnswer :: Value -> Maybe String
-      abstractAnswer v = unpack <$> v ^? key "AbstractText" . _String
+      abstractAnswer v = case unpack <$> v ^? key "AbstractText" . _String of
+                           Just "" -> Nothing
+                           x -> x
 
       relatedTopic :: Value -> Maybe String
       relatedTopic v = unpack <$> v ^? key "RelatedTopics" . nth 0 . key "Text" . _String
