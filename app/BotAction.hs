@@ -131,22 +131,43 @@ help postToSlack _ = postToSlack $ mconcat doc
           , intercalate "\n" $ map ("- " ++) commands
           ]
 
-nth :: Int -> [a] -> Maybe a
-nth _ [] = Nothing
-nth 0 (x:_) = Just x
-nth n (_:xs) = nth (n - 1) xs
+safeNth :: Int -> [a] -> Maybe a
+safeNth _ [] = Nothing
+safeNth 0 (x:_) = Just x
+safeNth n (_:xs) = safeNth (n - 1) xs
 
 sample :: [a] -> IO (Maybe a)
 sample [] = return Nothing
 sample xs = do
     idx <- randomRIO (0, length xs - 1)
-    return $ nth idx xs
+    return $ safeNth idx xs
 
 randomJoke :: UnauthenticatedActionHandler
-randomJoke postToSlack _ = sample [ "one"
-                                  , "two"
-                                  , "three"
-                                  ] >>= postToSlack . fromJust
+randomJoke postToSlack _ = sample jokes >>= postToSlack . fromJust
+  where
+    jokes = [ "What is mario's favorite type of pants? Denim denim denim."
+            , "What did the Buddhist say to the hot dog vendor? Make me one with everything."
+            , "What did the grape say after the elephant sat on it? Nothing, it just let out a little whine."
+            , "What do you call it when a dinosaur crashes his car? Tyrannosaurus Wrecks"
+            , "How does a lion like his meat? ROAR"
+            , "What did the fish say when he ran into the wall? Dam."
+            , "What do you do when you see a spaceman? Park your car, man!"
+            , "What did one hat say to another? You stay here, I'll go on a head!"
+            , "What do cats eat for breakfast? Mice Krispies!"
+            , "What do pigs write with? A pig pen!"
+            , "Why couldn't Dracula's wife get to sleep? Because of his coffin."
+            , "Did you hear about the fire at the circus? It was IN TENTS."
+            , "What does a ghost wear when it's raining outside? Boooooo-ts!"
+            , "What game would you play with a wombat? Wom."
+            , "A baby seal walks into a club."
+            , "A dyslexic man walks into a bra."
+            , "Bigfoot is blurry, it's not the photographer's fault."
+            , "The worst time to have a heart attack is during a game of charades"
+            , "My friend has difficulty sleeping, but I can do it with my eyes closed."
+            , "I quit my job at the helium factory, I refuse to be spoken to in that tone."
+            , "Get me a crocodile sandwich, and make it snappy!"
+            , "Two cannibals are eating a clown. One turns to the other and says, 'Does this taste funny to you?'"
+            ]
 
 runProcess :: String -> IO String
 runProcess cmd = SP.readProcess cmd [] []
