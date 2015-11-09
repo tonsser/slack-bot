@@ -20,8 +20,9 @@ import qualified Network.HTTP.Conduit as HTTP
 import Data.Aeson
 import qualified Data.ByteString.Lazy as LBS
 
+-- TODO: Change this to read from an ENV variable
 slackUrl :: String
-slackUrl = "https://hooks.slack.com/services/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"
+slackUrl = "https://hooks.slack.com/services/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"
 
 postResponseToSlack :: SlackResponseDestination -> Text -> IO ()
 postResponseToSlack destination text = do
