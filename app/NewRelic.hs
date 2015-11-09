@@ -38,10 +38,10 @@ data MetricsReport = MetricsReport
                    }
 
 getAppId :: IO Text
-getAppId = pack <$> fromMaybe (error "Missing env var TONSS_NEW_RELIC_API_KEY") <$> lookupEnv "TONSS_NEW_RELIC_APP_ID"
+getAppId = pack <$> fromMaybe (error "Missing env var TONSS_NEW_RELIC_APP_ID") <$> lookupEnv "TONSS_NEW_RELIC_APP_ID"
 
 getApiKey :: IO Text
-getApiKey = pack <$> fromMaybe (error "Missing env var TONSS_NEW_RELIC_APP_ID") <$> lookupEnv "TONSS_NEW_RELIC_APP_ID"
+getApiKey = pack <$> fromMaybe (error "Missing env var TONSS_NEW_RELIC_API_KEY") <$> lookupEnv "TONSS_NEW_RELIC_API_KEY"
 
 getMetricsReport :: DateRepresentation -> DateRepresentation -> IO (Maybe MetricsReport)
 getMetricsReport fromRep toRep = do
