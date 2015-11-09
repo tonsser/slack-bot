@@ -23,6 +23,7 @@ import Network.HTTP.Conduit
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Char8 as BS
 import DateParse
+import qualified Data.Text as T
 
 data MetricsReport = MetricsReport
                    { averageReponseTime :: Text
@@ -45,14 +46,22 @@ getApiKey = pack <$> fromMaybe (error "Missing env var TONSS_NEW_RELIC_API_KEY")
 
 getMetricsReport :: DateRepresentation -> DateRepresentation -> IO (Maybe MetricsReport)
 getMetricsReport fromRep toRep = do
-    let from = filter (/= '"') $ unpack $ dateRep fromRep
-        to = filter (/= '"') $ unpack $ dateRep toRep
     appId <- unpack <$> getAppId
     apiKey <- encodeTextToBS <$> getApiKey
-    initReq <- parseUrl $ "https://api.newrelic.com/v2/applications/" ++ appId ++ "/metrics/data.xml?names[]=Agent/MetricsReported/count&from=" ++ from ++ "&to=" ++ to ++ "&summarize=true"
-    let req = initReq { method = "GET"
-                      , requestHeaders = [("X-Api-Key" :: CI ByteString, apiKey)]
-                      }
+    let from = T.unpack $ T.filter (/= '"') $ dateRep fromRep
+        to = T.unpack $ T.filter (/= '"') $ dateRep toRep
+        url = "https://api.newrelic.com/v2/applications/" ++ appId ++ "/metrics/data.xml"
+
+        params :: [(ByteString, Maybe ByteString)]
+        params = [ ("names[]", Just "Agent/MetricsReported/count")
+                 , ("from", Just $ BS.pack from)
+                 , ("to", Just $ BS.pack to)
+                 , ("summarize", Just "true")
+                 ]
+    initReq <- parseUrl url
+    let req = setQueryString params $ initReq { method = "GET"
+                                              , requestHeaders = [("X-Api-Key" :: CI ByteString, apiKey)]
+                                              }
     man <- newManager defaultManagerSettings
     res <- pack . BS.unpack . LBS.toStrict <$> responseBody <$> httpLbs req man
     return $ parseMetricsReport res
