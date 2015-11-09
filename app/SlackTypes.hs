@@ -21,6 +21,7 @@ instance ToJSON SlackResponse where
     toJSON (SlackResponse text destination) =
       object [ "text" .= text
              , "channel" .= showDestination destination
+             , "mrkdwn" .= False
              ]
 
 data SlackRequest = SlackRequest

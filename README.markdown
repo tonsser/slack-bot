@@ -6,7 +6,7 @@ A Slack written in Haskell
 
 Look at how its done in `app/BotAction.hs`.
 
-**TODO** Explain this a bit better.
+**TODO**: Explain this a bit better.
 
 ## Setup
 
