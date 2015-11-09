@@ -73,7 +73,7 @@ processRequest accessTokenM req =
         postResponseToSlack destination $ T.pack txt
         return $ Right ()
     in case match of
-         Nothing -> void $ postString "Unknown action"
+         Nothing -> void $ postString "Sorry but I don't understand that. Type \"bot help\" to get a list of things I understand."
          Just (matches, action) ->
            case action of
              BA.UnauthticatedAction action' -> do
@@ -84,7 +84,7 @@ processRequest accessTokenM req =
 
              BA.AuthenticatedAction action' ->
                case accessTokenM of
-                 Nothing -> void $ postString "Authenticate required, type: bot authenticate"
+                 Nothing -> void $ postString "Authenticate required, type: \"bot authenticate\""
                  Just accessToken -> do
                    res <- action' accessToken postString matches
                    case res of
