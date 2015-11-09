@@ -49,7 +49,21 @@ actions = [ ("what time is it", UnauthticatedAction getTime)
           , ("whats an applicative", UnauthticatedAction whatsApplicative)
           , ("whats a monad", UnauthticatedAction whatsMonad)
           , ("tell me about (.*)", UnauthticatedAction tellMeAbout)
+          , ("img me (.*)", UnauthticatedAction imgMe)
           ]
+
+
+imgMe :: UnauthenticatedActionHandler
+imgMe postToSlack args = do
+    let pharse = intercalate "+" args
+    response <- HTTP.simpleHttp $ "http://api.duckduckgo.com/?q=" ++ pharse ++ "&format=json"
+    let
+      answer :: Maybe String
+      answer = decode response >>= getImage
+
+      getImage :: Value -> Maybe String
+      getImage v = unpack <$> v ^? key "RelatedTopics" . nth 0 . key "Icon" . key "URL" . _String
+    postToSlack $ fromMaybe "Couldn't find any images about that" answer
 
 tellMeAbout :: UnauthenticatedActionHandler
 tellMeAbout postToSlack args = do
