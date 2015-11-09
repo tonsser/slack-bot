@@ -2,6 +2,12 @@
 
 A Slack written in Haskell
 
+## Adding new actions
+
+Look at how its done in `app/BotAction.hs`.
+
+**TODO** Explain this a bit better.
+
 ## Setup
 
 - Create new a Slack Application. The redirect URI should be `https://warm-river-9355.herokuapp.com/slack/auth/callback`.
