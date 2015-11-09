@@ -59,6 +59,7 @@ actions = [ ("what time is it", UnauthticatedAction getTime)
 
 apiMetrics :: UnauthenticatedActionHandler
 apiMetrics postToSlack [from, to] = do
+    postToSlack "1 second..."
     reportM <- runMaybeT $ do
       fromDate <- MaybeT $ parseNaturalLanguageDate $ pack from
       toDate <- MaybeT $ parseNaturalLanguageDate $ pack to

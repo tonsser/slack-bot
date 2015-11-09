@@ -45,8 +45,8 @@ getApiKey = pack <$> fromMaybe (error "Missing env var TONSS_NEW_RELIC_API_KEY")
 
 getMetricsReport :: DateRepresentation -> DateRepresentation -> IO (Maybe MetricsReport)
 getMetricsReport fromRep toRep = do
-    let from = unpack $ dateRep fromRep
-        to = unpack $ dateRep toRep
+    let from = filter (/= '"') $ unpack $ dateRep fromRep
+        to = filter (/= '"') $ unpack $ dateRep toRep
     appId <- unpack <$> getAppId
     apiKey <- encodeTextToBS <$> getApiKey
     initReq <- parseUrl $ "https://api.newrelic.com/v2/applications/" ++ appId ++ "/metrics/data.xml?names[]=Agent/MetricsReported/count&from=" ++ from ++ "&to=" ++ to ++ "&summarize=true"
