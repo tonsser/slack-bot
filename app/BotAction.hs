@@ -11,6 +11,7 @@ import System.Random
 import qualified System.Process as SP
 import Control.Concurrent
 import Text.Read
+import qualified Data.Text as T
 import qualified Network.HTTP.Conduit as HTTP
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Char8 as BS
@@ -20,6 +21,9 @@ import SlackAPI
 import Data.Aeson
 import Data.Aeson.Lens
 import Control.Lens
+import qualified NewRelic as NR
+import DateParse
+import Control.Monad.Trans.Maybe
 
 type CommandMatches = [String]
 type PostToSlack = String -> IO (Either ErrorMsg ())
@@ -50,8 +54,31 @@ actions = [ ("what time is it", UnauthticatedAction getTime)
           , ("whats a monad", UnauthticatedAction whatsMonad)
           , ("tell me about (.*)", UnauthticatedAction tellMeAbout)
           , ("img me (.*)", UnauthticatedAction imgMe)
+          , ("api metrics from (.*) to (.*)", UnauthticatedAction apiMetrics)
           ]
 
+apiMetrics :: UnauthenticatedActionHandler
+apiMetrics postToSlack [from, to] = do
+    reportM <- runMaybeT $ do
+      fromDate <- MaybeT $ parseNaturalLanguageDate $ pack from
+      toDate <- MaybeT $ parseNaturalLanguageDate $ pack to
+      MaybeT $ NR.getMetricsReport fromDate toDate
+    case reportM of
+      Nothing -> error "todo"
+      Just report -> do
+        let lines = [ ("Average response time", NR.averageReponseTime)
+                    , ("Calls per minute", NR.callsPerMinute)
+                    , ("Call count", NR.callCount)
+                    , ("Min response time", NR.minResponseTime)
+                    , ("Max response time", NR.maxResponseTime)
+                    , ("Average exclusive time", NR.averageExclusionTime)
+                    , ("Average value", NR.averageValue)
+                    , ("Total call time per minute", NR.totalCallTimePerMinute)
+                    , ("Requests per minute", NR.requestsPerMinute)
+                    , ("Standard deviation", NR.standardDeviation)
+                    ]
+        postToSlack $ intercalate "\n" $ map (\(t, f) -> T.unpack t ++ " " ++ T.unpack (f report)) lines
+apiMetrics postToSlack _ = postToSlack "Parse failed"
 
 imgMe :: UnauthenticatedActionHandler
 imgMe postToSlack args = do

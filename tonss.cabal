@@ -30,6 +30,8 @@ library
                      SlackAPI
                      EnvHelpers
                      UrlHelpers
+                     NewRelic
+                     DateParse
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT
@@ -99,6 +101,8 @@ library
                  , lens-aeson
                  , lens
                  , split
+                 , case-insensitive
+                 , uri-encode
 
 executable         tonss
     if flag(library-only)
