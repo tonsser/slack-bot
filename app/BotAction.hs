@@ -64,7 +64,7 @@ apiMetrics postToSlack [from, to] = do
       toDate <- MaybeT $ parseNaturalLanguageDate $ pack to
       MaybeT $ NR.getMetricsReport fromDate toDate
     case reportM of
-      Nothing -> error "todo"
+      Nothing -> postToSlack "error..."
       Just report -> do
         let lines = [ ("Average response time", NR.averageReponseTime)
                     , ("Calls per minute", NR.callsPerMinute)
