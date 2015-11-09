@@ -78,7 +78,7 @@ apiMetrics postToSlack [from, to] = do
                  , ("Requests per minute", NR.requestsPerMinute)
                  , ("Standard deviation", NR.standardDeviation)
                  ]
-        postToSlack $ intercalate "\n" $ map (\(t, f) -> T.unpack t ++ " " ++ T.unpack (f report)) ls
+        postToSlack $ intercalate "\n" $ map (\(t, f) -> T.unpack t ++ ": " ++ T.unpack (f report)) ls
 apiMetrics postToSlack _ = postToSlack "Parse failed"
 
 imgMe :: UnauthenticatedActionHandler
