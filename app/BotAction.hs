@@ -20,7 +20,7 @@ import UrlHelpers
 import SlackAPI
 import Data.Aeson
 import Data.Aeson.Lens
-import Control.Lens
+import Control.Lens hiding (from, to)
 import qualified NewRelic as NR
 import DateParse
 import Control.Monad.Trans.Maybe
@@ -45,9 +45,6 @@ actions = [ ("what time is it", UnauthticatedAction getTime)
           , ("who should pickup lunch", UnauthticatedAction pickupLunch)
           , ("cat me", UnauthticatedAction cat)
           , ("whos there", AuthenticatedAction whosThere)
-          -- `authenticate` is overriden by `SlackHelpers` but has to be here
-          -- otherwise it wont show in `help`
-          , ("authenticate", UnauthticatedAction doNothing)
           , ("is it time for coffee", UnauthticatedAction coffeeTime)
           , ("whats a functor", UnauthticatedAction whatsFunctor)
           , ("whats an applicative", UnauthticatedAction whatsApplicative)
@@ -55,11 +52,14 @@ actions = [ ("what time is it", UnauthticatedAction getTime)
           , ("tell me about (.*)", UnauthticatedAction tellMeAbout)
           , ("img me (.*)", UnauthticatedAction imgMe)
           , ("api metrics from (.*) to (.*)", UnauthticatedAction apiMetrics)
+          -- `authenticate` is overriden by `SlackHelpers` but has to be here
+          -- otherwise it wont show in `help`
+          , ("authenticate", UnauthticatedAction doNothing)
           ]
 
 apiMetrics :: UnauthenticatedActionHandler
 apiMetrics postToSlack [from, to] = do
-    postToSlack "1 second..."
+    void $ postToSlack "1 second..."
     reportM <- runMaybeT $ do
       fromDate <- MaybeT $ parseNaturalLanguageDate $ pack from
       toDate <- MaybeT $ parseNaturalLanguageDate $ pack to
@@ -67,18 +67,18 @@ apiMetrics postToSlack [from, to] = do
     case reportM of
       Nothing -> postToSlack "error..."
       Just report -> do
-        let lines = [ ("Average response time", NR.averageReponseTime)
-                    , ("Calls per minute", NR.callsPerMinute)
-                    , ("Call count", NR.callCount)
-                    , ("Min response time", NR.minResponseTime)
-                    , ("Max response time", NR.maxResponseTime)
-                    , ("Average exclusive time", NR.averageExclusionTime)
-                    , ("Average value", NR.averageValue)
-                    , ("Total call time per minute", NR.totalCallTimePerMinute)
-                    , ("Requests per minute", NR.requestsPerMinute)
-                    , ("Standard deviation", NR.standardDeviation)
-                    ]
-        postToSlack $ intercalate "\n" $ map (\(t, f) -> T.unpack t ++ " " ++ T.unpack (f report)) lines
+        let ls = [ ("Average response time", NR.averageReponseTime)
+                 , ("Calls per minute", NR.callsPerMinute)
+                 , ("Call count", NR.callCount)
+                 , ("Min response time", NR.minResponseTime)
+                 , ("Max response time", NR.maxResponseTime)
+                 , ("Average exclusive time", NR.averageExclusionTime)
+                 , ("Average value", NR.averageValue)
+                 , ("Total call time per minute", NR.totalCallTimePerMinute)
+                 , ("Requests per minute", NR.requestsPerMinute)
+                 , ("Standard deviation", NR.standardDeviation)
+                 ]
+        postToSlack $ intercalate "\n" $ map (\(t, f) -> T.unpack t ++ " " ++ T.unpack (f report)) ls
 apiMetrics postToSlack _ = postToSlack "Parse failed"
 
 imgMe :: UnauthenticatedActionHandler

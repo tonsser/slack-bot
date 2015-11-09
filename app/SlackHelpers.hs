@@ -4,7 +4,6 @@ module SlackHelpers
     , processRequest
     , getAppRoot
     , concatPaths
-    , mapFst
     )
   where
 
@@ -19,6 +18,7 @@ import BotAction (BotAction)
 import qualified Network.HTTP.Conduit as HTTP
 import Data.Aeson
 import qualified Data.ByteString.Lazy as LBS
+import Misc
 
 -- TODO: Change this to read from an ENV variable
 slackUrl :: String
@@ -56,15 +56,20 @@ authenticateAction req = BA.UnauthticatedAction $ \postToSlack _ -> do
     _ <- postToSlack "Check your private messages"
     return $ Right ()
 
+nonGlobalRegex :: String -> String
+nonGlobalRegex str = "^" ++ str ++ "$"
+
 processRequest :: Maybe Text -> SlackRequest -> IO ()
 processRequest accessTokenM req =
     let
       text :: String
       text = T.unpack $ textWithoutTriggerWord req
 
-      match :: Maybe ([String], BotAction)
-      match = matchingAction text $ authAction : BA.actions
+      actions = map (mapFst nonGlobalRegex) $ authAction : BA.actions
         where authAction = ("authenticate", authenticateAction req)
+
+      match :: Maybe ([String], BotAction)
+      match = matchingAction text actions
 
       destination :: SlackResponseDestination
       destination = SlackResponseChannel $ slackRequestChannelName req
@@ -109,6 +114,3 @@ textWithoutTriggerWord req = T.strip $ T.pack $ L.replace (triggerWord req) "" $
   where
     triggerWord :: SlackRequest -> String
     triggerWord = T.unpack . slackRequestTriggerWord
-
-mapFst :: (a -> c) ->  (a, b) -> (c, b)
-mapFst f (a, b) = (f a, b)

@@ -32,6 +32,7 @@ library
                      UrlHelpers
                      NewRelic
                      DateParse
+                     Misc
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT
