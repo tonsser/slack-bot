@@ -59,10 +59,15 @@ imgMe postToSlack args = do
     response <- HTTP.simpleHttp $ "http://api.duckduckgo.com/?q=" ++ pharse ++ "&format=json"
     let
       answer :: Maybe String
-      answer = decode response >>= getImage
+      answer = decode response >>= liftM2 (<|>) getImage getRelatedImage
 
       getImage :: Value -> Maybe String
-      getImage v = case unpack <$> v ^? key "RelatedTopics" . nth 0 . key "Icon" . key "URL" . _String of
+      getImage v = case unpack <$> v ^? key "Image" . _String of
+                           Just "" -> Nothing
+                           x -> x
+
+      getRelatedImage :: Value -> Maybe String
+      getRelatedImage v = case unpack <$> v ^? key "RelatedTopics" . nth 0 . key "Icon" . key "URL" . _String of
                      Just "" -> Nothing
                      x -> x
     postToSlack $ fromMaybe "Couldn't find any images about that" answer
