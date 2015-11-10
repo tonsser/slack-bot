@@ -16,7 +16,7 @@ newtype DateRepresentation = DateRepresentation { dateRep :: Text }
 parseNaturalLanguageDate :: Text -> IO (Maybe DateRepresentation)
 parseNaturalLanguageDate phrase = do
     let query = intercalate "+" $ words $ unpack phrase
-    initReq <- parseUrl $ "https://aqueous-plateau-6171.herokuapp.com/?q=" ++ query
+    initReq <- parseUrl $ "https://natural-language-date-parse.herokuapp.com/?q=" ++ query
     let req = initReq { method = "GET"
                       , checkStatus = \_ _ _ -> Nothing
                       }
