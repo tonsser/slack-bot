@@ -24,6 +24,6 @@ parseNaturalLanguageDate phrase = do
     res <- httpLbs req man
     if responseStatus res == ok200
       then do
-        let body = T.pack . BS.unpack . LBS.toStrict . responseBody $ res
+        let body = T.filter (/= '"') $ T.pack . BS.unpack . LBS.toStrict . responseBody $ res
         return $ Just $ DateRepresentation body
       else return Nothing

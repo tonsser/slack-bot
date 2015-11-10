@@ -11,6 +11,9 @@ module NewRelic
   , standardDeviation
   , MetricsReport
   , getMetricsReport
+  , getErrorCount
+  , ErrorCount
+  , errorCount
   )
   where
 
@@ -38,33 +41,44 @@ data MetricsReport = MetricsReport
                    , standardDeviation :: Text
                    }
 
+data ErrorCount = ErrorCount
+                { errorCount :: Text
+                }
+
+getMetricsReport :: DateRepresentation -> DateRepresentation -> IO (Maybe MetricsReport)
+getMetricsReport fromRep toRep = parseMetricsReport <$> runNewRelicRequest "Agent/MetricsReported/count" fromRep toRep
+
+getErrorCount :: DateRepresentation -> DateRepresentation -> IO (Maybe ErrorCount)
+getErrorCount fromRep toRep = parseErrorCount <$> runNewRelicRequest "Errors/all" fromRep toRep
+
 getAppId :: IO Text
 getAppId = pack <$> fromMaybe (error "Missing env var TONSS_NEW_RELIC_APP_ID") <$> lookupEnv "TONSS_NEW_RELIC_APP_ID"
 
 getApiKey :: IO Text
 getApiKey = pack <$> fromMaybe (error "Missing env var TONSS_NEW_RELIC_API_KEY") <$> lookupEnv "TONSS_NEW_RELIC_API_KEY"
 
-getMetricsReport :: DateRepresentation -> DateRepresentation -> IO (Maybe MetricsReport)
-getMetricsReport fromRep toRep = do
+runNewRelicRequest :: ByteString -> DateRepresentation -> DateRepresentation -> IO Text
+runNewRelicRequest param fromRep toRep = do
     appId <- unpack <$> getAppId
     apiKey <- encodeTextToBS <$> getApiKey
-    let from = T.unpack $ T.filter (/= '"') $ dateRep fromRep
-        to = T.unpack $ T.filter (/= '"') $ dateRep toRep
+    let from = T.unpack $ dateRep fromRep
+        to = T.unpack $ dateRep toRep
         url = "https://api.newrelic.com/v2/applications/" ++ appId ++ "/metrics/data.xml"
-
-        params :: [(ByteString, Maybe ByteString)]
-        params = [ ("names[]", Just "Agent/MetricsReported/count")
-                 , ("from", Just $ BS.pack from)
+        params = [ ("from", Just $ BS.pack from)
                  , ("to", Just $ BS.pack to)
                  , ("summarize", Just "true")
+                 , ("names[]", Just param)
                  ]
     initReq <- parseUrl url
     let req = setQueryString params $ initReq { method = "GET"
                                               , requestHeaders = [("X-Api-Key" :: CI ByteString, apiKey)]
                                               }
+    performRequest req
+
+performRequest :: Request -> IO Text
+performRequest req = do
     man <- newManager defaultManagerSettings
-    res <- pack . BS.unpack . LBS.toStrict <$> responseBody <$> httpLbs req man
-    return $ parseMetricsReport res
+    pack . BS.unpack . LBS.toStrict <$> responseBody <$> httpLbs req man
 
 parseMetricsReport :: Text -> Maybe MetricsReport
 parseMetricsReport xml = MetricsReport <$> parse xml "average_response_time"
@@ -77,6 +91,9 @@ parseMetricsReport xml = MetricsReport <$> parse xml "average_response_time"
                                        <*> parse xml "total_call_time_per_minute"
                                        <*> parse xml "requests_per_minute"
                                        <*> parse xml "standard_deviation"
+
+parseErrorCount :: Text -> Maybe ErrorCount
+parseErrorCount xml = ErrorCount <$> parse xml "error_count"
 
 parse :: Text -> Text -> Maybe Text
 parse xml key = case matchRegex regex (unpack xml) of
@@ -111,6 +128,30 @@ parse xml key = case matchRegex regex (unpack xml) of
 --               <total_call_time_per_minute>0.775</total_call_time_per_minute>
 --               <requests_per_minute>6.99</requests_per_minute>
 --               <standard_deviation>129</standard_deviation>
+--             </values>
+--           </timeslice>
+--         </timeslices>
+--       </metric>
+--     </metrics>
+--   </metric_data>
+-- </metric_data_response>
+--
+-- Sample error rate response
+--
+-- <?xml version="1.0" encoding="UTF-8"?>
+-- <metric_data_response>
+--   <metric_data>
+--     <from>2014-04-01T00:00:00+00:00</from>
+--     <to>2015-04-01T23:35:00+00:00</to>
+--     <metrics>
+--       <metric>
+--         <name>Errors/all</name>
+--         <timeslices>
+--           <timeslice>
+--             <from>2014-04-03T23:35:00+00:00</from>
+--             <to>2015-04-01T23:35:00+00:00</to>
+--             <values>
+--               <error_count>0</error_count>
 --             </values>
 --           </timeslice>
 --         </timeslices>
