@@ -8,6 +8,7 @@ import System.Environment
 import Network.URI.Encode (encodeTextToBS)
 import qualified Data.ByteString.Lazy.UTF8 as BS
 import Network.HTTP.Conduit
+import Data.CaseInsensitive
 
 createIssue :: String -> IO Bool
 createIssue title = do
@@ -18,6 +19,7 @@ createIssue title = do
     initReq <- parseUrl url
     let req = setQueryString params $ initReq { method = "POST"
                                               , requestBody = RequestBodyLBS $ BS.fromString body
+                                              , requestHeaders = [("User-Agent" :: CI ByteString, "Tonsser-Slack-Bot")]
                                               }
     man <- newManager defaultManagerSettings
     status <- responseStatus <$> httpLbs req man
