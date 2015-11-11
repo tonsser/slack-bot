@@ -7,10 +7,10 @@ import Import hiding (httpLbs, newManager)
 import System.Environment
 import Network.URI.Encode (encodeTextToBS)
 import qualified Data.ByteString.Lazy.UTF8 as BS
-import Network.HTTP.Conduit
 import Data.CaseInsensitive
+import HttpHelpers
 
-createIssue :: String -> IO Bool
+createIssue :: String -> IO (Either GenericException ())
 createIssue title = do
     accessToken <- encodeTextToBS <$> getAccessToken
     let url = "https://api.github.com/repos/tonsser/tonss/issues"
@@ -21,11 +21,7 @@ createIssue title = do
                                               , requestBody = RequestBodyLBS $ BS.fromString body
                                               , requestHeaders = [("User-Agent" :: CI ByteString, "Tonsser-Slack-Bot")]
                                               }
-    man <- newManager defaultManagerSettings
-    status <- responseStatus <$> httpLbs req man
-    if status == status201
-      then return True
-      else return False
+    void <$> safeHttpLbs req
 
 getAccessToken :: IO Text
 getAccessToken = pack <$> fromMaybe (error "Missing env var TONSS_GITHUB_ACCESS_TOKEN") <$> lookupEnv "TONSS_GITHUB_ACCESS_TOKEN"

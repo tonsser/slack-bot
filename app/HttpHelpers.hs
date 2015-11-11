@@ -1,15 +1,23 @@
 module HttpHelpers
-    ( performRequest
+    ( safeHttpLbs
+    , GenericException(..),
     )
   where
 
 import Import hiding (httpLbs, newManager)
 import Network.HTTP.Conduit
 import qualified Data.ByteString.Lazy as LBS
-import qualified Data.ByteString.Char8 as BS
 
-performRequest :: Request -> IO Text
-performRequest req = do
+data GenericException = GenericException String
+                      | WrappedHttpExcpetion HttpException
+                      deriving (Show)
+
+instance Exception GenericException
+
+safeHttpLbs :: Request -> IO (Either GenericException (Response LBS.ByteString))
+safeHttpLbs req = do
     man <- newManager defaultManagerSettings
-    pack . BS.unpack . LBS.toStrict <$> responseBody <$> httpLbs req man
-
+    response <- try $ httpLbs req man
+    case response of
+      Right x -> return $ Right x
+      Left e -> return $ Left $ WrappedHttpExcpetion e

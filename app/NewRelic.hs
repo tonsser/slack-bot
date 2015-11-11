@@ -23,9 +23,11 @@ import System.Environment
 import Data.CaseInsensitive
 import Network.URI.Encode (encodeTextToBS)
 import qualified Data.ByteString.Char8 as BS
+import qualified Data.ByteString.Lazy as LBS
 import DateParse
 import qualified Data.Text as T
 import HttpHelpers
+import Control.Monad.Trans.Except
 
 data MetricsReport = MetricsReport
                    { averageReponseTime :: Text
@@ -44,19 +46,15 @@ data ErrorCount = ErrorCount
                 { errorCount :: Text
                 }
 
-getMetricsReport :: DateRepresentation -> DateRepresentation -> IO (Maybe MetricsReport)
-getMetricsReport fromRep toRep = parseMetricsReport <$> runNewRelicRequest "Agent/MetricsReported/count" fromRep toRep
+getMetricsReport :: DateRepresentation -> DateRepresentation -> IO (Either GenericException MetricsReport)
+getMetricsReport fromRep toRep = runExceptT $ do response <- ExceptT $ runNewRelicRequest "Agent/MetricsReported/count" fromRep toRep
+                                                 ExceptT $ return $ parseMetricsReport response
 
-getErrorCount :: DateRepresentation -> DateRepresentation -> IO (Maybe ErrorCount)
-getErrorCount fromRep toRep = parseErrorCount <$> runNewRelicRequest "Errors/all" fromRep toRep
+getErrorCount :: DateRepresentation -> DateRepresentation -> IO (Either GenericException ErrorCount)
+getErrorCount fromRep toRep = runExceptT $ do response <- ExceptT $ runNewRelicRequest "Errors/all" fromRep toRep
+                                              ExceptT $ return $ parseErrorCount response
 
-getAppId :: IO Text
-getAppId = pack <$> fromMaybe (error "Missing env var TONSS_NEW_RELIC_APP_ID") <$> lookupEnv "TONSS_NEW_RELIC_APP_ID"
-
-getApiKey :: IO Text
-getApiKey = pack <$> fromMaybe (error "Missing env var TONSS_NEW_RELIC_API_KEY") <$> lookupEnv "TONSS_NEW_RELIC_API_KEY"
-
-runNewRelicRequest :: ByteString -> DateRepresentation -> DateRepresentation -> IO Text
+runNewRelicRequest :: ByteString -> DateRepresentation -> DateRepresentation -> IO (Either GenericException Text)
 runNewRelicRequest param fromRep toRep = do
     appId <- unpack <$> getAppId
     apiKey <- encodeTextToBS <$> getApiKey
@@ -72,9 +70,12 @@ runNewRelicRequest param fromRep toRep = do
     let req = setQueryString params $ initReq { method = "GET"
                                               , requestHeaders = [("X-Api-Key" :: CI ByteString, apiKey)]
                                               }
-    performRequest req
+    fmap (byteStringToText . responseBody) <$> safeHttpLbs req
 
-parseMetricsReport :: Text -> Maybe MetricsReport
+byteStringToText :: LBS.ByteString -> Text
+byteStringToText = pack . BS.unpack . LBS.toStrict
+
+parseMetricsReport :: Text -> Either GenericException MetricsReport
 parseMetricsReport xml = MetricsReport <$> parse xml "average_response_time"
                                        <*> parse xml "calls_per_minute"
                                        <*> parse xml "call_count"
@@ -86,16 +87,22 @@ parseMetricsReport xml = MetricsReport <$> parse xml "average_response_time"
                                        <*> parse xml "requests_per_minute"
                                        <*> parse xml "standard_deviation"
 
-parseErrorCount :: Text -> Maybe ErrorCount
+parseErrorCount :: Text -> Either GenericException ErrorCount
 parseErrorCount xml = ErrorCount <$> parse xml "error_count"
 
-parse :: Text -> Text -> Maybe Text
+parse :: Text -> Text -> Either GenericException Text
 parse xml key = case matchRegex regex (unpack xml) of
-                  Just [x] -> Just $ pack x
-                  _ -> Nothing
+                  Just [x] -> Right $ pack x
+                  _ -> Left $ GenericException "There was an error (parsing xml)"
   where
     regex = mkRegex pat
     pat = mconcat ["<", unpack key, ">(.*)</", unpack key, ">"]
+
+getAppId :: IO Text
+getAppId = pack <$> fromMaybe (error "Missing env var TONSS_NEW_RELIC_APP_ID") <$> lookupEnv "TONSS_NEW_RELIC_APP_ID"
+
+getApiKey :: IO Text
+getApiKey = pack <$> fromMaybe (error "Missing env var TONSS_NEW_RELIC_API_KEY") <$> lookupEnv "TONSS_NEW_RELIC_API_KEY"
 
 -- Sample xml from newrelic
 --

@@ -11,21 +11,20 @@ import System.Random
 import qualified System.Process as SP
 import Control.Concurrent
 import Text.Read
-import qualified Data.Text as T
 import qualified Network.HTTP.Conduit as HTTP
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Char8 as BS
+import qualified Data.Text as T
+import Control.Monad.Trans.Except
 import Text.Regex
 import UrlHelpers
 import SlackAPI
-import Data.Aeson
-import Data.Aeson.Lens
-import Control.Lens hiding (from, to)
 import qualified NewRelic as NR
 import DateParse
 import Giphy
-import Control.Monad.Trans.Maybe
 import qualified Github as GH
+import qualified DuckDuckGo as DG
+import HttpHelpers
 
 type CommandMatches = [String]
 type PostToSlack = String -> IO (Either ErrorMsg ())
@@ -53,7 +52,6 @@ actions = [ ("what time is it", UnauthticatedAction getTime)
           , ("whats an applicative", UnauthticatedAction whatsApplicative)
           , ("whats a monad", UnauthticatedAction whatsMonad)
           , ("tell me about (.*)", UnauthticatedAction tellMeAbout)
-          , ("img me (.*)", UnauthticatedAction imgMe)
           , ("api metrics from (.*) to (.*)", UnauthticatedAction apiMetrics)
           , ("api errors from (.*) to (.*)", UnauthticatedAction apiErrors)
           , ("request feature (.*)", UnauthticatedAction requestFeature)
@@ -66,10 +64,10 @@ actions = [ ("what time is it", UnauthticatedAction getTime)
 requestFeature :: UnauthenticatedActionHandler
 requestFeature postToSlack args = do
     let pharse = intercalate "+" args
-    success <- GH.createIssue pharse
-    if success
-      then postToSlack "Noted!"
-      else postToSlack "Something went wrong..."
+    response <- GH.createIssue pharse
+    case response of
+      Right () -> postToSlack "Noted!"
+      Left e -> postToSlack "There was an error..." >> postToSlack (show e)
 
 apiErrors :: UnauthenticatedActionHandler
 apiErrors postToSlack [from, to] = postNewRelicData ls NR.getErrorCount from to postToSlack
@@ -92,56 +90,28 @@ apiMetrics postToSlack [from, to] = postNewRelicData ls NR.getMetricsReport from
 apiMetrics postToSlack _ = postToSlack "Parse failed"
 
 postNewRelicData :: [(Text, a -> Text)]
-                    -> (DateRepresentation -> DateRepresentation -> IO (Maybe a))
+                    -> (DateRepresentation -> DateRepresentation -> IO (Either GenericException a))
                     -> String
                     -> String
                     -> (String -> IO b)
                     -> IO b
 postNewRelicData ls fetchData from to postToSlack = do
     void $ postToSlack "1 second..."
-    reportM <- runMaybeT $ do
-      fromDate <- MaybeT $ parseNaturalLanguageDate $ pack from
-      toDate <- MaybeT $ parseNaturalLanguageDate $ pack to
-      MaybeT $ fetchData fromDate toDate
-    case reportM of
-      Nothing -> postToSlack "error..."
-      Just report -> postToSlack $ intercalate "\n" $ map (\(t, f) -> T.unpack t ++ ": " ++ T.unpack (f report)) ls
-
-imgMe :: UnauthenticatedActionHandler
-imgMe postToSlack args = do
-    let pharse = intercalate "+" args
-    response <- HTTP.simpleHttp $ "http://api.duckduckgo.com/?q=" ++ pharse ++ "&format=json"
-    let
-      answer :: Maybe String
-      answer = decode response >>= liftM2 (<|>) getImage getRelatedImage
-
-      getImage :: Value -> Maybe String
-      getImage v = case unpack <$> v ^? key "Image" . _String of
-                           Just "" -> Nothing
-                           x -> x
-
-      getRelatedImage :: Value -> Maybe String
-      getRelatedImage v = case unpack <$> v ^? key "RelatedTopics" . nth 0 . key "Icon" . key "URL" . _String of
-                     Just "" -> Nothing
-                     x -> x
-    postToSlack $ fromMaybe "Couldn't find any images about that" answer
+    report <- runExceptT $ do
+      fromDate <- ExceptT $ parseNaturalLanguageDate $ pack from
+      toDate <- ExceptT $ parseNaturalLanguageDate $ pack to
+      ExceptT $ fetchData fromDate toDate
+    case report of
+      Left e -> postToSlack $ show e
+      Right r -> postToSlack $ intercalate "\n" $ map (\(t, f) -> T.unpack t ++ ": " ++ T.unpack (f r)) ls
 
 tellMeAbout :: UnauthenticatedActionHandler
 tellMeAbout postToSlack args = do
-    let pharse = intercalate "+" args
-    response <- HTTP.simpleHttp $ "http://api.duckduckgo.com/?q=" ++ pharse ++ "&format=json"
-    let
-      answer :: Maybe String
-      answer = decode response >>= liftM2 (<|>) abstractAnswer relatedTopic
-
-      abstractAnswer :: Value -> Maybe String
-      abstractAnswer v = case unpack <$> v ^? key "AbstractText" . _String of
-                           Just "" -> Nothing
-                           x -> x
-
-      relatedTopic :: Value -> Maybe String
-      relatedTopic v = unpack <$> v ^? key "RelatedTopics" . nth 0 . key "Text" . _String
-    postToSlack $ fromMaybe "Don't know anything about that" answer
+    let phrase = intercalate "+" args
+    response <- DG.tellMeAbout phrase
+    case response of
+      Left e -> postToSlack (show e)
+      Right answer -> postToSlack answer
 
 whatsFunctor :: UnauthenticatedActionHandler
 whatsFunctor postToSlack _ = postToSlack $ mconcat [ "class Functor (f :: * -> *) where\n"
@@ -189,9 +159,10 @@ gif postToSlack phrase = do
     let query = intercalate "+" phrase
     urlM <- gifMe query
     case urlM of
-      Nothing -> postToSlack "There was an error..."
-      Just url -> postToSlack url
+      Left e -> postToSlack $ show e
+      Right url -> postToSlack url
 
+-- TODO: Make a module that wraps this, and uses safeHttpLbs
 cat :: UnauthenticatedActionHandler
 cat postToSlack _ = do
     resp <- httpGet "http://thecatapi.com/api/images/get?format=xml"
