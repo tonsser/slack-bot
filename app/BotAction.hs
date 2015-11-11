@@ -23,6 +23,7 @@ import Data.Aeson.Lens
 import Control.Lens hiding (from, to)
 import qualified NewRelic as NR
 import DateParse
+import Giphy
 import Control.Monad.Trans.Maybe
 
 type CommandMatches = [String]
@@ -44,6 +45,7 @@ actions = [ ("what time is it", UnauthticatedAction getTime)
           , ("set a timer to (.+) minutes", UnauthticatedAction timer)
           , ("who should pickup lunch", UnauthticatedAction pickupLunch)
           , ("cat me", UnauthticatedAction cat)
+          , ("gif me (.*)", UnauthticatedAction gif)
           , ("whos there", AuthenticatedAction whosThere)
           , ("is it time for coffee", UnauthticatedAction coffeeTime)
           , ("whats a functor", UnauthticatedAction whatsFunctor)
@@ -53,6 +55,7 @@ actions = [ ("what time is it", UnauthticatedAction getTime)
           , ("img me (.*)", UnauthticatedAction imgMe)
           , ("api metrics from (.*) to (.*)", UnauthticatedAction apiMetrics)
           , ("api errors from (.*) to (.*)", UnauthticatedAction apiErrors)
+
           -- `authenticate` is overriden by `SlackHelpers` but has to be here
           -- otherwise it wont show in `help`
           , ("authenticate", UnauthticatedAction doNothing)
@@ -170,6 +173,14 @@ doNothing _ _ = return $ Right ()
 
 httpGet :: String -> IO String
 httpGet url = BS.unpack . LBS.toStrict <$> HTTP.simpleHttp url
+
+gif :: UnauthenticatedActionHandler
+gif postToSlack phrase = do
+    let query = intercalate "+" phrase
+    urlM <- gifMe query
+    case urlM of
+      Nothing -> postToSlack "There was an error..."
+      Just url -> postToSlack url
 
 cat :: UnauthenticatedActionHandler
 cat postToSlack _ = do

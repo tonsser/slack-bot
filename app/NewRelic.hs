@@ -22,11 +22,10 @@ import Text.Regex
 import System.Environment
 import Data.CaseInsensitive
 import Network.URI.Encode (encodeTextToBS)
-import Network.HTTP.Conduit
-import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Char8 as BS
 import DateParse
 import qualified Data.Text as T
+import HttpHelpers
 
 data MetricsReport = MetricsReport
                    { averageReponseTime :: Text
@@ -74,11 +73,6 @@ runNewRelicRequest param fromRep toRep = do
                                               , requestHeaders = [("X-Api-Key" :: CI ByteString, apiKey)]
                                               }
     performRequest req
-
-performRequest :: Request -> IO Text
-performRequest req = do
-    man <- newManager defaultManagerSettings
-    pack . BS.unpack . LBS.toStrict <$> responseBody <$> httpLbs req man
 
 parseMetricsReport :: Text -> Maybe MetricsReport
 parseMetricsReport xml = MetricsReport <$> parse xml "average_response_time"

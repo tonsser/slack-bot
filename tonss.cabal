@@ -33,6 +33,8 @@ library
                      NewRelic
                      DateParse
                      Misc
+                     Giphy
+                     HttpHelpers
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT
