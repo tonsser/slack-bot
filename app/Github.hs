@@ -15,7 +15,7 @@ createIssue title = do
     accessToken <- encodeTextToBS <$> getAccessToken
     let url = "https://api.github.com/repos/tonsser/tonss/issues"
         params = [ ("access_token", Just accessToken) ]
-        body = "title=" ++ title
+        body = "{\"title\":\"" ++ title ++ "\"}"
     initReq <- parseUrl url
     let req = setQueryString params $ initReq { method = "POST"
                                               , requestBody = RequestBodyLBS $ BS.fromString body
