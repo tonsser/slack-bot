@@ -25,6 +25,7 @@ import qualified NewRelic as NR
 import DateParse
 import Giphy
 import Control.Monad.Trans.Maybe
+import qualified Github as GH
 
 type CommandMatches = [String]
 type PostToSlack = String -> IO (Either ErrorMsg ())
@@ -55,11 +56,20 @@ actions = [ ("what time is it", UnauthticatedAction getTime)
           , ("img me (.*)", UnauthticatedAction imgMe)
           , ("api metrics from (.*) to (.*)", UnauthticatedAction apiMetrics)
           , ("api errors from (.*) to (.*)", UnauthticatedAction apiErrors)
+          , ("request feature (.*)", UnauthticatedAction requestFeature)
 
           -- `authenticate` is overriden by `SlackHelpers` but has to be here
           -- otherwise it wont show in `help`
           , ("authenticate", UnauthticatedAction doNothing)
           ]
+
+requestFeature :: UnauthenticatedActionHandler
+requestFeature postToSlack args = do
+    let pharse = intercalate "+" args
+    success <- GH.createIssue pharse
+    if success
+      then postToSlack "Noted!"
+      else postToSlack "Something went wrong..."
 
 apiErrors :: UnauthenticatedActionHandler
 apiErrors postToSlack [from, to] = postNewRelicData ls NR.getErrorCount from to postToSlack

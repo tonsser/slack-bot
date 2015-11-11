@@ -35,6 +35,7 @@ library
                      Misc
                      Giphy
                      HttpHelpers
+                     Github
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT
@@ -106,6 +107,7 @@ library
                  , split
                  , case-insensitive
                  , uri-encode
+                 , utf8-string
 
 executable         tonss
     if flag(library-only)
