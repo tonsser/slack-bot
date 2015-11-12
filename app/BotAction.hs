@@ -86,7 +86,7 @@ actions = [ ( "what time is it"
             , UnauthticatedAction cat
             , CategorySilly
             )
-          , ( "gif me (.*)"
+          , ( "gif me (.+)"
             , UnauthticatedAction gif
             , CategorySilly
             )
@@ -110,19 +110,19 @@ actions = [ ( "what time is it"
             , UnauthticatedAction whatsMonad
             , CategoryInformation
             )
-          , ( "tell me about (.*)"
+          , ( "tell me about (.+)"
             , UnauthticatedAction tellMeAbout
             , CategoryUtility
             )
-          , ( "api metrics from (.*) to (.*)"
+          , ( "api metrics from (.+) to (.+)"
             , UnauthticatedAction apiMetrics
             , CategoryApiUtility
             )
-          , ( "api errors from (.*) to (.*)"
+          , ( "api errors from (.+) to (.+)"
             , UnauthticatedAction apiErrors
             , CategoryApiUtility
             )
-          , ( "request feature (.*)"
+          , ( "request feature (.+)"
             , UnauthticatedAction requestFeature
             , CategoryUtility
             )
@@ -287,7 +287,7 @@ gif postToSlack phrase _ = do
 cat :: UnauthenticatedActionHandler
 cat postToSlack _ _ = do
     resp <- httpGet "http://thecatapi.com/api/images/get?format=xml"
-    case matchRegex (mkRegex "<url>(.*)</url>") resp of
+    case matchRegex (mkRegex "<url>(.+)</url>") resp of
       Just [url] -> postToSlack url
       _ -> err "Something went wrong"
 
@@ -326,7 +326,7 @@ help postToSlack _ _ = postToSlack $ mconcat doc
     categories = map categoryParagraph $ groupBy thr3 actions
 
     categoryParagraph :: (ActionCategory, [(String, BotAction, ActionCategory)]) -> String
-    categoryParagraph (c, as) = intercalate "\n" [ show c ++ ":"
+    categoryParagraph (c, as) = intercalate "\n" [ "*" ++ show c ++ ":*"
                                                  , intercalate "\n" $ map fst3 as
                                                  ]
 
