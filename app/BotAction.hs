@@ -58,11 +58,26 @@ actions = [ ("what time is it", UnauthticatedAction getTime)
           , ("api errors from (.*) to (.*)", UnauthticatedAction apiErrors)
           , ("request feature (.*)", UnauthticatedAction requestFeature)
           , ("ruby (.+)", UnauthticatedAction ruby)
+          , ("issues with (.+)", UnauthticatedAction listIssues)
 
           -- `authenticate` is overriden by `SlackHelpers` but has to be here
           -- otherwise it wont show in `help`
           , ("authenticate", UnauthticatedAction doNothing)
           ]
+
+listIssues :: UnauthenticatedActionHandler
+listIssues postToSlack [repo] _ = do
+    issues <- GH.issues repo
+    case issues of
+      Left e -> postToSlack "There was an error" >> postToSlack (show e)
+      Right is ->
+        let prettyPrintIssue i = intercalate "\n" [ "Title: " ++ GH.issueTitle i
+                                                  , "Number: " ++ show (GH.issueNumber i)
+                                                  , "URL: " ++ GH.issueUrl i
+                                                  ]
+            text = intercalate "\n\n" $ map prettyPrintIssue is
+        in postToSlack text
+listIssues postToSlack _ _ = postToSlack "Repo name cannot contain spaces"
 
 ruby :: UnauthenticatedActionHandler
 ruby postToSlack args _ = do
@@ -75,9 +90,9 @@ ruby postToSlack args _ = do
 requestFeature :: UnauthenticatedActionHandler
 requestFeature postToSlack args slackReq = do
     let pharse = intercalate "+" args
-        issue = GH.GithubIssue { title = pharse
-                               , username = T.unpack $ slackRequestUsername slackReq
-                               }
+        issue = GH.FeatureRequest { title = pharse
+                                  , username = T.unpack $ slackRequestUsername slackReq
+                                  }
     response <- GH.createIssue issue
     case response of
       Right () -> postToSlack "Noted!"
