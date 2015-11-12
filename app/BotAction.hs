@@ -26,14 +26,15 @@ import qualified Github as GH
 import qualified DuckDuckGo as DG
 import HttpHelpers
 import EvalRuby
+import SlackTypes
 
 type CommandMatches = [String]
 type PostToSlack = String -> IO (Either ErrorMsg ())
 type ErrorMsg = String
 type AccessToken = Text
 
-type UnauthenticatedActionHandler = (PostToSlack -> CommandMatches -> IO (Either ErrorMsg ()))
-type AuthenticatedActionHandler = (AccessToken -> PostToSlack -> CommandMatches -> IO (Either ErrorMsg ()))
+type UnauthenticatedActionHandler = (PostToSlack -> CommandMatches -> SlackRequest -> IO (Either ErrorMsg ()))
+type AuthenticatedActionHandler = (AccessToken -> PostToSlack -> CommandMatches -> SlackRequest -> IO (Either ErrorMsg ()))
 
 data BotAction = UnauthticatedAction UnauthenticatedActionHandler
                | AuthenticatedAction AuthenticatedActionHandler
@@ -64,7 +65,7 @@ actions = [ ("what time is it", UnauthticatedAction getTime)
           ]
 
 ruby :: UnauthenticatedActionHandler
-ruby postToSlack args = do
+ruby postToSlack args _ = do
     let command = intercalate "+" args
     response <- evalRuby command
     case response of
@@ -72,7 +73,7 @@ ruby postToSlack args = do
       Left e -> postToSlack "There was an error..." >> postToSlack (show e)
 
 requestFeature :: UnauthenticatedActionHandler
-requestFeature postToSlack args = do
+requestFeature postToSlack args _ = do
     let pharse = intercalate "+" args
     response <- GH.createIssue pharse
     case response of
@@ -80,12 +81,12 @@ requestFeature postToSlack args = do
       Left e -> postToSlack "There was an error..." >> postToSlack (show e)
 
 apiErrors :: UnauthenticatedActionHandler
-apiErrors postToSlack [from, to] = postNewRelicData ls NR.getErrorCount from to postToSlack
+apiErrors postToSlack [from, to] _ = postNewRelicData ls NR.getErrorCount from to postToSlack
     where ls = [ ("Error count", NR.errorCount) ]
-apiErrors postToSlack _ = postToSlack "Parse failed"
+apiErrors postToSlack _ _ = postToSlack "Parse failed"
 
 apiMetrics :: UnauthenticatedActionHandler
-apiMetrics postToSlack [from, to] = postNewRelicData ls NR.getMetricsReport from to postToSlack
+apiMetrics postToSlack [from, to] _ = postNewRelicData ls NR.getMetricsReport from to postToSlack
     where ls = [ ("Average response time", NR.averageReponseTime)
                , ("Calls per minute", NR.callsPerMinute)
                , ("Call count", NR.callCount)
@@ -97,7 +98,7 @@ apiMetrics postToSlack [from, to] = postNewRelicData ls NR.getMetricsReport from
                , ("Requests per minute", NR.requestsPerMinute)
                , ("Standard deviation", NR.standardDeviation)
                ]
-apiMetrics postToSlack _ = postToSlack "Parse failed"
+apiMetrics postToSlack _ _ = postToSlack "Parse failed"
 
 postNewRelicData :: [(Text, a -> Text)]
                     -> (DateRepresentation -> DateRepresentation -> IO (Either GenericException a))
@@ -116,7 +117,7 @@ postNewRelicData ls fetchData from to postToSlack = do
       Right r -> postToSlack $ intercalate "\n" $ map (\(t, f) -> T.unpack t ++ ": " ++ T.unpack (f r)) ls
 
 tellMeAbout :: UnauthenticatedActionHandler
-tellMeAbout postToSlack args = do
+tellMeAbout postToSlack args _ = do
     let phrase = intercalate "+" args
     response <- DG.tellMeAbout phrase
     case response of
@@ -124,27 +125,27 @@ tellMeAbout postToSlack args = do
       Right answer -> postToSlack answer
 
 whatsFunctor :: UnauthenticatedActionHandler
-whatsFunctor postToSlack _ = postToSlack $ mconcat [ "class Functor (f :: * -> *) where\n"
+whatsFunctor postToSlack _ _ = postToSlack $ mconcat [ "class Functor (f :: * -> *) where\n"
                                                    , "  fmap :: (a -> b) -> f a -> f b"
                                                    ]
 
 whatsApplicative :: UnauthenticatedActionHandler
-whatsApplicative postToSlack _ = postToSlack $ mconcat [ "class Functor f => Applicative (f :: * -> *) where\n"
+whatsApplicative postToSlack _ _ = postToSlack $ mconcat [ "class Functor f => Applicative (f :: * -> *) where\n"
                                                        , "  pure :: a -> f a\n"
                                                        , "  (<*>) :: f (a -> b) -> f a -> f b"
                                                        ]
 
 whatsMonad :: UnauthenticatedActionHandler
-whatsMonad postToSlack _ = postToSlack $ mconcat [ "class Applicative m => Monad (m :: * -> *) where\n"
+whatsMonad postToSlack _ _ = postToSlack $ mconcat [ "class Applicative m => Monad (m :: * -> *) where\n"
                                                  , "  (>>=) :: m a -> (a -> m b) -> m b\n"
                                                  , "  return :: a -> m a"
                                                  ]
 
 coffeeTime :: UnauthenticatedActionHandler
-coffeeTime postToSlack _ = postToSlack "Let me check on that" >> postToSlack "Yes it is!"
+coffeeTime postToSlack _ _ = postToSlack "Let me check on that" >> postToSlack "Yes it is!"
 
 whosThere :: AuthenticatedActionHandler
-whosThere accessToken postToSlack _ = do
+whosThere accessToken postToSlack _ _ = do
     users <- usersList accessToken
     case users of
       Nothing -> postToSlack "Problem with slack"
@@ -153,19 +154,19 @@ whosThere accessToken postToSlack _ = do
                      in postToSlack x
 
 getTime :: UnauthenticatedActionHandler
-getTime postToSlack _ = do
+getTime postToSlack _ _ = do
     date <- removeExtraSpaces <$> runProcess "date"
     let text = mconcat ["The current time is ", date, ", at least where I am"]
     postToSlack text
 
 doNothing :: UnauthenticatedActionHandler
-doNothing _ _ = return $ Right ()
+doNothing _ _ _ = return $ Right ()
 
 httpGet :: String -> IO String
 httpGet url = BS.unpack . LBS.toStrict <$> HTTP.simpleHttp url
 
 gif :: UnauthenticatedActionHandler
-gif postToSlack phrase = do
+gif postToSlack phrase _ = do
     let query = intercalate "+" phrase
     urlM <- gifMe query
     case urlM of
@@ -174,20 +175,20 @@ gif postToSlack phrase = do
 
 -- TODO: Make a module that wraps this, and uses safeHttpLbs
 cat :: UnauthenticatedActionHandler
-cat postToSlack _ = do
+cat postToSlack _ _ = do
     resp <- httpGet "http://thecatapi.com/api/images/get?format=xml"
     case matchRegex (mkRegex "<url>(.*)</url>") resp of
       Just [url] -> postToSlack url
       _ -> err "Something went wrong"
 
 pickupLunch :: UnauthenticatedActionHandler
-pickupLunch postToSlack _ =
+pickupLunch postToSlack _ _ =
     -- interact with slack api to find list of online users
     -- pick two at random and return those
     postToSlack "Not implemented yet"
 
 timer :: UnauthenticatedActionHandler
-timer postToSlack [time] = do
+timer postToSlack [time] _ = do
     let
       t :: Maybe Int
       t = readMaybe time
@@ -197,16 +198,16 @@ timer postToSlack [time] = do
         _ <- postToSlack "Starting timer!"
         threadDelay $ t' * 60 * 1000000
         postToSlack "Times up!"
-timer _ _ = err "Couldn't parse time"
+timer _ _ _ = err "Couldn't parse time"
 
 err :: String -> IO (Either String a)
 err reason = return $ Left reason
 
 flipCoin :: UnauthenticatedActionHandler
-flipCoin postToSlack _ = sample ["heads", "tails"] >>= postToSlack . fromJust
+flipCoin postToSlack _ _ = sample ["heads", "tails"] >>= postToSlack . fromJust
 
 help :: UnauthenticatedActionHandler
-help postToSlack _ = postToSlack $ mconcat doc
+help postToSlack _ _ = postToSlack $ mconcat doc
   where
     commands :: [String]
     commands = map fst (sortBy (compare `on` fst) actions)
@@ -228,7 +229,7 @@ sample xs = do
     return $ safeNth idx xs
 
 randomJoke :: UnauthenticatedActionHandler
-randomJoke postToSlack _ = sample jokes >>= postToSlack . fromJust
+randomJoke postToSlack _ _ = sample jokes >>= postToSlack . fromJust
   where
     jokes = [ "What is mario's favorite type of pants? Denim denim denim."
             , "What did the Buddhist say to the hot dog vendor? Make me one with everything."

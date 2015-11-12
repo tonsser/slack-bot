@@ -82,7 +82,7 @@ processRequest accessTokenM req =
          Just (matches, action) ->
            case action of
              BA.UnauthticatedAction action' -> do
-               res <- action' postString matches
+               res <- action' postString matches req
                case res of
                  Right () -> return ()
                  Left reason -> void $ postString reason
@@ -91,7 +91,7 @@ processRequest accessTokenM req =
                case accessTokenM of
                  Nothing -> void $ postString "Authenticate required, type: \"bot authenticate\""
                  Just accessToken -> do
-                   res <- action' accessToken postString matches
+                   res <- action' accessToken postString matches req
                    case res of
                      Right () -> return ()
                      Left reason -> void $ postString reason
