@@ -25,6 +25,7 @@ import Giphy
 import qualified Github as GH
 import qualified DuckDuckGo as DG
 import HttpHelpers
+import EvalRuby
 
 type CommandMatches = [String]
 type PostToSlack = String -> IO (Either ErrorMsg ())
@@ -55,11 +56,20 @@ actions = [ ("what time is it", UnauthticatedAction getTime)
           , ("api metrics from (.*) to (.*)", UnauthticatedAction apiMetrics)
           , ("api errors from (.*) to (.*)", UnauthticatedAction apiErrors)
           , ("request feature (.*)", UnauthticatedAction requestFeature)
+          , ("ruby (.+)", UnauthticatedAction ruby)
 
           -- `authenticate` is overriden by `SlackHelpers` but has to be here
           -- otherwise it wont show in `help`
           , ("authenticate", UnauthticatedAction doNothing)
           ]
+
+ruby :: UnauthenticatedActionHandler
+ruby postToSlack args = do
+    let command = intercalate "+" args
+    response <- evalRuby command
+    case response of
+      Right output -> postToSlack output
+      Left e -> postToSlack "There was an error..." >> postToSlack (show e)
 
 requestFeature :: UnauthenticatedActionHandler
 requestFeature postToSlack args = do

@@ -37,6 +37,7 @@ library
                      HttpHelpers
                      Github
                      DuckDuckGo
+                     EvalRuby
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT
