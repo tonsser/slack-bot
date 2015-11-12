@@ -58,12 +58,24 @@ actions = [ ("what time is it", UnauthticatedAction getTime)
           , ("api errors from (.*) to (.*)", UnauthticatedAction apiErrors)
           , ("request feature (.*)", UnauthticatedAction requestFeature)
           , ("ruby (.+)", UnauthticatedAction ruby)
-          , ("issues with (.+)", UnauthticatedAction listIssues)
+          , ("issues for (.+)", UnauthticatedAction listIssues)
+          , ("close issue number (.+) for (.+)", UnauthticatedAction closeIssue)
 
           -- `authenticate` is overriden by `SlackHelpers` but has to be here
           -- otherwise it wont show in `help`
           , ("authenticate", UnauthticatedAction doNothing)
           ]
+
+closeIssue :: UnauthenticatedActionHandler
+closeIssue postToSlack [numberS, repo] _ =
+    case (readMaybe numberS :: Maybe Int) of
+      Nothing -> postToSlack "Couldn't parse number"
+      Just number -> do
+        response <- GH.closeIssue repo number
+        case response of
+          Right _ -> postToSlack "Done!"
+          Left e -> postToSlack "There was an error" >> postToSlack (show e)
+closeIssue postToSlack _ _ = postToSlack "Couldn't parse that message... :("
 
 listIssues :: UnauthenticatedActionHandler
 listIssues postToSlack [repo] _ = do

@@ -6,6 +6,7 @@ module Github
     , issueUrl
     , issueTitle
     , issueBody
+    , closeIssue
     )
   where
 
@@ -36,13 +37,27 @@ issues :: String -> IO (Either GenericException [GithubIssue])
 issues repo = do
     accessToken <- encodeTextToBS <$> getAccessToken
     let url = "https://api.github.com/repos/tonsser/" ++ repo ++ "/issues"
-        params = [ ("access_token", Just accessToken) ]
+        params = [ ("access_token", Just accessToken)
+                 ]
     initReq <- parseUrl url
     let req = setQueryString params $ initReq { method = "GET"
                                               , requestHeaders = [("User-Agent" :: CI ByteString, "Tonsser-Slack-Bot")]
                                               }
     body <- fmap responseBody <$> safeHttpLbs req
     return $ body >>= parseGithubIssues
+
+closeIssue :: String -> Int -> IO (Either GenericException ())
+closeIssue repo number = do
+    accessToken <- encodeTextToBS <$> getAccessToken
+    let url = "https://api.github.com/repos/tonsser/" ++ repo ++ "/issues/" ++ show number
+        params = [ ("access_token", Just accessToken)
+                 ]
+    initReq <- parseUrl url
+    let req = setQueryString params $ initReq { method = "PATCH"
+                                              , requestBody = RequestBodyLBS "{\"state\":\"closed\"}"
+                                              , requestHeaders = [("User-Agent" :: CI ByteString, "Tonsser-Slack-Bot")]
+                                              }
+    void <$> safeHttpLbs req
 
 parseGithubIssues :: LBS.ByteString -> Either GenericException [GithubIssue]
 parseGithubIssues json = case decode json of
