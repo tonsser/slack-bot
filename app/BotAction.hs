@@ -2,9 +2,10 @@ module BotAction
   ( actions
   , BotAction (..)
   , fix
+  , ActionCategory(..)
   ) where
 
-import Import
+import Import hiding (groupBy)
 import Data.Maybe (fromJust)
 import qualified Data.List.Utils as L
 import System.Random
@@ -27,6 +28,7 @@ import qualified DuckDuckGo as DG
 import HttpHelpers
 import EvalRuby
 import SlackTypes
+import Misc
 
 type CommandMatches = [String]
 type PostToSlack = String -> IO (Either ErrorMsg ())
@@ -39,31 +41,109 @@ type AuthenticatedActionHandler = (AccessToken -> PostToSlack -> CommandMatches 
 data BotAction = UnauthticatedAction UnauthenticatedActionHandler
                | AuthenticatedAction AuthenticatedActionHandler
 
-actions :: [(String, BotAction)]
-actions = [ ("what time is it", UnauthticatedAction getTime)
-          , ("tell me a joke", UnauthticatedAction randomJoke)
-          , ("flip a coin", UnauthticatedAction flipCoin)
-          , ("help", UnauthticatedAction help)
-          , ("set a timer to (.+) minutes", UnauthticatedAction timer)
-          , ("who should pickup lunch", UnauthticatedAction pickupLunch)
-          , ("cat me", UnauthticatedAction cat)
-          , ("gif me (.*)", UnauthticatedAction gif)
-          , ("whos there", AuthenticatedAction whosThere)
-          , ("is it time for coffee", UnauthticatedAction coffeeTime)
-          , ("whats a functor", UnauthticatedAction whatsFunctor)
-          , ("whats an applicative", UnauthticatedAction whatsApplicative)
-          , ("whats a monad", UnauthticatedAction whatsMonad)
-          , ("tell me about (.*)", UnauthticatedAction tellMeAbout)
-          , ("api metrics from (.*) to (.*)", UnauthticatedAction apiMetrics)
-          , ("api errors from (.*) to (.*)", UnauthticatedAction apiErrors)
-          , ("request feature (.*)", UnauthticatedAction requestFeature)
-          , ("ruby (.+)", UnauthticatedAction ruby)
-          , ("issues for (.+)", UnauthticatedAction listIssues)
-          , ("close issue number (.+) for (.+)", UnauthticatedAction closeIssue)
+data ActionCategory = CategoryGithub
+                    | CategoryMisc
+                    | CategorySilly
+                    | CategoryInformation
+                    | CategoryUtility
+                    | CategoryApiUtility
+                    deriving (Eq, Ord)
 
+instance Show ActionCategory where
+    show CategoryGithub = "Github"
+    show CategoryMisc = "Misc"
+    show CategorySilly = "Silly"
+    show CategoryInformation = "Information"
+    show CategoryUtility = "Utility"
+    show CategoryApiUtility = "Api utility"
+
+actions :: [(String, BotAction, ActionCategory)]
+actions = [ ( "what time is it"
+            , UnauthticatedAction getTime
+            , CategoryInformation
+            )
+          , ( "tell me a joke"
+            , UnauthticatedAction randomJoke
+            , CategorySilly
+            )
+          , ( "flip a coin"
+            , UnauthticatedAction flipCoin
+            , CategoryUtility
+            )
+          , ( "help"
+            , UnauthticatedAction help
+            , CategoryInformation
+            )
+          , ( "set a timer to (.+) minutes"
+            , UnauthticatedAction timer
+            , CategoryUtility
+            )
+          , ( "who should pickup lunch"
+            , UnauthticatedAction pickupLunch
+            , CategoryUtility
+            )
+          , ( "cat me"
+            , UnauthticatedAction cat
+            , CategorySilly
+            )
+          , ( "gif me (.*)"
+            , UnauthticatedAction gif
+            , CategorySilly
+            )
+          , ( "whos there"
+            , AuthenticatedAction whosThere
+            , CategoryMisc
+            )
+          , ( "is it time for coffee"
+            , UnauthticatedAction coffeeTime
+            , CategoryUtility
+            )
+          , ( "whats a functor"
+            , UnauthticatedAction whatsFunctor
+            , CategoryInformation
+            )
+          , ( "whats an applicative"
+            , UnauthticatedAction whatsApplicative
+            , CategoryInformation
+            )
+          , ( "whats a monad"
+            , UnauthticatedAction whatsMonad
+            , CategoryInformation
+            )
+          , ( "tell me about (.*)"
+            , UnauthticatedAction tellMeAbout
+            , CategoryUtility
+            )
+          , ( "api metrics from (.*) to (.*)"
+            , UnauthticatedAction apiMetrics
+            , CategoryApiUtility
+            )
+          , ( "api errors from (.*) to (.*)"
+            , UnauthticatedAction apiErrors
+            , CategoryApiUtility
+            )
+          , ( "request feature (.*)"
+            , UnauthticatedAction requestFeature
+            , CategoryUtility
+            )
+          , ( "ruby (.+)"
+            , UnauthticatedAction ruby
+            , CategoryUtility
+            )
+          , ( "issues for (.+)"
+            , UnauthticatedAction listIssues
+            , CategoryGithub
+            )
+          , ( "close issue number (.+) for (.+)"
+            , UnauthticatedAction closeIssue
+            , CategoryGithub
+            )
           -- `authenticate` is overriden by `SlackHelpers` but has to be here
           -- otherwise it wont show in `help`
-          , ("authenticate", UnauthticatedAction doNothing)
+          , ( "authenticate"
+            , UnauthticatedAction doNothing
+            , CategoryMisc
+            )
           ]
 
 closeIssue :: UnauthenticatedActionHandler
@@ -239,12 +319,21 @@ flipCoin postToSlack _ _ = sample ["heads", "tails"] >>= postToSlack . fromJust
 help :: UnauthenticatedActionHandler
 help postToSlack _ _ = postToSlack $ mconcat doc
   where
-    commands :: [String]
-    commands = map fst (sortBy (compare `on` fst) actions)
+    thr3 (_, _, x) = x
+    fst3 (x, _, _) = x
+
+    categories :: [String]
+    categories = map categoryParagraph $ groupBy thr3 actions
+
+    categoryParagraph :: (ActionCategory, [(String, BotAction, ActionCategory)]) -> String
+    categoryParagraph (c, as) = intercalate "\n" [ show c ++ ":"
+                                                 , intercalate "\n" $ map fst3 as
+                                                 ]
 
     doc :: [String]
-    doc = [ "Here are the commands I know about: ", "\n"
-          , intercalate "\n" $ map ("- " ++) commands
+    doc = [ "Here are the commands I know about: "
+          , "\n"
+          , intercalate "\n\n" categories
           ]
 
 safeNth :: Int -> [a] -> Maybe a

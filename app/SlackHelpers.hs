@@ -40,6 +40,7 @@ postResponseToSlack destination text = do
     man <- HTTP.newManager HTTP.tlsManagerSettings
     void $ HTTP.httpLbs httpReq man
 
+-- TODO: Move this into BotActions since its not a special case anymore
 authenticateAction :: SlackRequest -> BotAction
 authenticateAction req = BA.UnauthticatedAction $ \postToSlack _ _ -> do
     -- TODO: Don't use environment variables here
@@ -59,16 +60,19 @@ authenticateAction req = BA.UnauthticatedAction $ \postToSlack _ _ -> do
 nonGlobalRegex :: String -> String
 nonGlobalRegex str = "^" ++ str ++ "$"
 
+mapFst3 :: (a -> b) -> (a, c, d) -> (b, c, d)
+mapFst3 f (x, y, z) = (f x, y, z)
+
 processRequest :: Maybe Text -> SlackRequest -> IO ()
 processRequest accessTokenM req =
     let
       text :: String
       text = T.unpack $ textWithoutTriggerWord req
 
-      actions = map (mapFst nonGlobalRegex) $ authAction : BA.actions
-        where authAction = ("authenticate", authenticateAction req)
+      actions = map (mapFst3 nonGlobalRegex) $ authAction : BA.actions
+        where authAction = ("authenticate", authenticateAction req, BA.CategoryMisc)
 
-      match :: Maybe ([String], BotAction)
+      match :: Maybe ([String], BotAction, BA.ActionCategory)
       match = matchingAction text actions
 
       destination :: SlackResponseDestination
@@ -79,7 +83,7 @@ processRequest accessTokenM req =
         return $ Right ()
     in case match of
          Nothing -> void $ postString "Sorry but I don't understand that. Type \"bot help\" to get a list of things I understand."
-         Just (matches, action) ->
+         Just (matches, action, _) ->
            case action of
              BA.UnauthticatedAction action' -> do
                res <- action' postString matches req
@@ -96,18 +100,18 @@ processRequest accessTokenM req =
                      Right () -> return ()
                      Left reason -> void $ postString reason
 
-matchingAction :: String -> [(String, BotAction)] -> Maybe ([String], BotAction)
-matchingAction t as = helper t $ map (mapFst R.mkRegex) as
+matchingAction :: String -> [(String, BotAction, BA.ActionCategory)] -> Maybe ([String], BotAction, BA.ActionCategory)
+matchingAction t as = helper t $ map (mapFst3 R.mkRegex) as
   where
-    helper :: String -> [(R.Regex, BotAction)] -> Maybe ([String], BotAction)
+    helper :: String -> [(R.Regex, BotAction, BA.ActionCategory)] -> Maybe ([String], BotAction, BA.ActionCategory)
     helper _ [] = Nothing
-    helper text ((regex, h) : rest) =
+    helper text ((regex, h, c) : rest) =
         let
           match :: Maybe [String]
           match = R.matchRegex regex text
         in case match of
              Nothing -> helper text rest
-             Just matches -> Just (matches, h)
+             Just matches -> Just (matches, h, c)
 
 textWithoutTriggerWord :: SlackRequest -> Text
 textWithoutTriggerWord req = T.strip $ T.pack $ L.replace (triggerWord req) "" $ T.unpack $ slackRequestText req
