@@ -73,9 +73,12 @@ ruby postToSlack args _ = do
       Left e -> postToSlack "There was an error..." >> postToSlack (show e)
 
 requestFeature :: UnauthenticatedActionHandler
-requestFeature postToSlack args _ = do
+requestFeature postToSlack args slackReq = do
     let pharse = intercalate "+" args
-    response <- GH.createIssue pharse
+        issue = GH.GithubIssue { title = pharse
+                               , username = T.unpack $ slackRequestUsername slackReq
+                               }
+    response <- GH.createIssue issue
     case response of
       Right () -> postToSlack "Noted!"
       Left e -> postToSlack "There was an error..." >> postToSlack (show e)

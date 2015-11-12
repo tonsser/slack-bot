@@ -41,7 +41,7 @@ postResponseToSlack destination text = do
     void $ HTTP.httpLbs httpReq man
 
 authenticateAction :: SlackRequest -> BotAction
-authenticateAction req = BA.UnauthticatedAction $ \postToSlack _ -> do
+authenticateAction req = BA.UnauthticatedAction $ \postToSlack _ _ -> do
     -- TODO: Don't use environment variables here
     -- TODO: Concat the paths in a nicer way
     appRoot <- getAppRoot
