@@ -166,7 +166,7 @@ listIssues postToSlack [repo] _ = do
                                                   , "Number: #" ++ show (GH.issueNumber i)
                                                   , "URL: " ++ GH.issueUrl i
                                                   ]
-            text = intercalate "\n\n" $ map prettyPrintIssue is
+            text = intercalate "\n\n" $ map prettyPrintIssue $ reverse is
         in postToSlack text
 listIssues postToSlack _ _ = postToSlack "Repo name cannot contain spaces"
 
