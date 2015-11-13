@@ -142,6 +142,10 @@ actions = [ ( "what time is it"
             , UnauthticatedAction baconIpsum
             , CategorySilly
             )
+          , ( "bacon me"
+            , UnauthticatedAction baconMe
+            , CategorySilly
+            )
           -- `authenticate` is overriden by `SlackHelpers` but has to be here
           -- otherwise it wont show in `help`
           , ( "authenticate"
@@ -149,6 +153,19 @@ actions = [ ( "what time is it"
             , CategoryMisc
             )
           ]
+
+baconMe :: UnauthenticatedActionHandler
+baconMe postToSlack _ _ = do
+    img <- fromJust <$> sample [ "http://static.tumblr.com/efcd314e9fe24722553f594cffa61cfd/g2dhfnu/ArYmlvd7a/tumblr_static_bacon.png"
+                               , "http://www.drserenamurray.com/wp-content/uploads/2013/02/1bacon0929.jpg"
+                               , "http://www.jdfoods.net/wp-content/uploads/2015/08/original-bacon-image-png1.png"
+                               , "https://bacontoday.com/wp-content/uploads/2013/01/Giant-Pile-of-Bacon.jpg"
+                               , "http://netstorage.discovery.com/feeds/brightcove/asset-stills/dam/135664103849213930900301197_bacon_tutle_burger.jpg"
+                               , "http://i.huffpost.com/gen/1452814/thumbs/o-BACON-570.jpg?5"
+                               , "http://dudefoods.com/wordpress/wp-content/uploads/2013/05/BaconWeaveTaco3111.jpg"
+                               , "https://timenewsfeed.files.wordpress.com/2013/05/nf_bacon_longevity_0508.jpg?w=480&h=320&crop=1"
+                               ]
+    postToSlack img
 
 baconIpsum :: UnauthenticatedActionHandler
 baconIpsum postToSlack _ _ = do
