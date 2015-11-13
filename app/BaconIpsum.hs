@@ -4,32 +4,30 @@ module BaconIpsum
   where
 
 import Import hiding (httpLbs, newManager)
-import qualified Data.ByteString.Char8 as BS
 import HttpHelpers
 import Control.Monad.Trans.Except
 import Data.Aeson
 import Data.Aeson.Lens
 import Control.Lens
 import qualified Data.Vector as V
-import qualified Data.Text as T
 
 baconIpsum :: Int -> IO (Either GenericException [String])
 baconIpsum numberOfParagraphs = do
-    let params = [ ("type", Just "all-meat")
-                 , ("paras", Just $ BS.pack $ show numberOfParagraphs)
-                 , ("start-with-lorem", Just "1")
-                 , ("format", Just "json")
-                 ]
-    initReq <- parseUrl "https://baconipsum.com/api/"
-    let req = setQueryString params $ initReq { method = "GET" }
+    let req = mkReq { reqDefUrl = "https://baconipsum.com/api/"
+                    , reqDefQueryParams = Just [ ("type", "all-meat")
+                                               , ("paras", show numberOfParagraphs)
+                                               , ("start-with-lorem", "1")
+                                               , ("format", "json")
+                                               ]
+                    }
     result <- runExceptT $ do
-      response <- ExceptT $ safeHttpLbs req
+      response <- ExceptT $ performRequest req
       let
         body = responseBody response
         answer = decode body >>= paragraphs
 
         paragraphs :: Value -> Maybe [String]
-        paragraphs v = catMaybes <$> V.toList . V.map (fmap T.unpack . (^? _String)) <$> v ^? _Array
+        paragraphs v = catMaybes <$> V.toList . V.map (fmap cs . (^? _String)) <$> v ^? _Array
       return answer
     case result of
       Left e -> return $ Left e

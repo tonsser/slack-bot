@@ -111,6 +111,7 @@ library
                  , case-insensitive
                  , uri-encode
                  , utf8-string
+                 , string-conversions
 
 executable         tonss
     if flag(library-only)
