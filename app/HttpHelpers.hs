@@ -1,6 +1,4 @@
-module HttpHelpers ( safeHttpLbs
-                   , GenericException(..)
-                   , performRequest
+module HttpHelpers ( performRequest
                    , RequestDefinition
                    , mkReq
                    , reqDefUrl
@@ -8,6 +6,13 @@ module HttpHelpers ( safeHttpLbs
                    , reqDefQueryParams
                    , reqDefHeaders
                    , reqDefBody
+
+                   , JsonResponse
+                   , fetchJson
+                   , runJsonRequest
+
+                   , GenericException(..)
+                   , safeHttpLbs
                    )
                    where
 
@@ -15,6 +20,8 @@ import Import hiding (httpLbs, newManager)
 import Network.HTTP.Conduit
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.CaseInsensitive as CI
+import Data.Aeson (decode)
+import Control.Monad.Trans.Except
 
 data GenericException = GenericException String
                       | WrappedHttpExcpetion HttpException
@@ -51,6 +58,37 @@ performRequest req = do
                                                   , requestHeaders = headers
                                                   , requestBody = RequestBodyLBS $ cs $ fromMaybe "" $ reqDefBody req
                                                   }
+
+newtype JsonResponse a = JsonResponse { runJsonRequest :: IO (Either GenericException a) }
+
+instance Functor JsonResponse where
+    fmap f res = JsonResponse $ do
+      res' <- runJsonRequest res
+      case res' of
+        Left e -> return $ Left e
+        Right x -> return $ Right $ f x
+
+instance Applicative JsonResponse where
+    pure = JsonResponse . return . Right
+    f <*> x = JsonResponse $ do f' <- runJsonRequest f
+                                x' <- runJsonRequest x
+                                return $ do f'' <- f'
+                                            x'' <- x'
+                                            return $ f'' x''
+
+instance Monad JsonResponse where
+    return = pure
+    (JsonResponse x) >>= f = JsonResponse $ do x' <- x
+                                               case x' of
+                                                 Right a -> runJsonRequest $ f a
+                                                 Left e -> return $ Left e
+
+fetchJson :: RequestDefinition -> JsonResponse Value
+fetchJson req = JsonResponse $ runExceptT $ do
+    body <- ExceptT $ fmap responseBody <$> performRequest req
+    ExceptT $ return $ case decode body of
+      Nothing -> Left $ GenericException "Failed to parse json"
+      Just v -> Right v
 
 -- TODO: Remove export of this and have everything go through
 -- `performRequest
