@@ -129,11 +129,11 @@ actions = [ ( "what time is it"
             , UnauthticatedAction ruby
             , CategoryUtility
             )
-          , ( "issues for (.+)"
+          , ( "issues (.+)"
             , UnauthticatedAction listIssues
             , CategoryGithub
             )
-          , ( "close issue number (.+) for (.+)"
+          , ( "close issue #(.+) (.+)"
             , UnauthticatedAction closeIssue
             , CategoryGithub
             )
@@ -163,7 +163,7 @@ listIssues postToSlack [repo] _ = do
       Left e -> postToSlack "There was an error" >> postToSlack (show e)
       Right is ->
         let prettyPrintIssue i = intercalate "\n" [ "Title: " ++ GH.issueTitle i
-                                                  , "Number: " ++ show (GH.issueNumber i)
+                                                  , "Number: #" ++ show (GH.issueNumber i)
                                                   , "URL: " ++ GH.issueUrl i
                                                   ]
             text = intercalate "\n\n" $ map prettyPrintIssue is
