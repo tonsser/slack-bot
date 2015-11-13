@@ -58,9 +58,6 @@ authenticateAction req = BA.UnauthticatedAction $ \postToSlack _ _ -> do
     _ <- postToSlack "Check your private messages"
     return $ Right ()
 
-mapFst3 :: (a -> b) -> (a, c, d) -> (b, c, d)
-mapFst3 f (x, y, z) = (f x, y, z)
-
 processRequest :: Maybe Text -> SlackRequest -> IO ()
 processRequest accessTokenM req =
     let
@@ -109,12 +106,10 @@ matchingAction t as = helper t as
 
 matchActionText :: String -> String -> Maybe [String]
 matchActionText text pat = R.matchRegex regex text
-  where regex = R.mkRegex $ nonGlobalRegex $ optionalQuestionMark pat
-        nonGlobalRegex str = "^" ++ str ++ "$"
-        optionalQuestionMark str = str ++ "\\?*"
+  where regex = R.mkRegex $ "^" ++ pat ++ "\\?*$"
 
 textWithoutTriggerWord :: SlackRequest -> Text
-textWithoutTriggerWord req = T.strip $ T.pack $ L.replace (triggerWord req) "" $ T.unpack $ slackRequestText req
+textWithoutTriggerWord req = T.pack $ R.subRegex pat (T.unpack $ slackRequestText req) ""
   where
-    triggerWord :: SlackRequest -> String
-    triggerWord = T.unpack . slackRequestTriggerWord
+    triggerWord = T.unpack $ slackRequestTriggerWord req
+    pat = R.mkRegex $ "^" ++ triggerWord ++ " "
