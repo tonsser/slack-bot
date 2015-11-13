@@ -8,12 +8,6 @@ import qualified Text.Regex as R
 
 nop _ _ = return $ Right ()
 
-sampleActions :: [(String, BA.BotAction)]
-sampleActions = [ ("foobar", BA.UnauthticatedAction nop)
-                , ("tell me about (.*)", BA.UnauthticatedAction nop)
-                , ("what do you (.+) about (.+)", BA.UnauthticatedAction nop)
-                ]
-
 sampleSlackReqest :: SlackRequest
 sampleSlackReqest = SlackRequest { slackRequestToken = "token"
                                  , slackRequestTeamId = "team-id"
@@ -33,33 +27,17 @@ spec = do
                                      , slackRequestTriggerWord = "bot"
                                      }
 
-    describe "textWithoutTriggerWord" $ do
+    describe "textWithoutTriggerWord" $
       it "finds the matching action" $ do
         let text = SH.textWithoutTriggerWord request'
         text `shouldBe` "hi there"
 
-    describe "matchingAction" $ do
-      it "returns the action that matches" $ do
-        let commandArgs = fst <$> SH.matchingAction "foobar" sampleActions
-        commandArgs `shouldBe` (Just [])
+    describe "textMatchesActionText" $ do
+      it "matches when there are no patterns" $
+        SH.matchActionText "help" "help" `shouldBe` True
 
-      it "returns the action that matches the pattern" $ do
-        let commandArgs = fst <$> SH.matchingAction "tell me about hest ko" sampleActions
-        commandArgs `shouldBe` (Just ["hest ko"])
+      it "doesn't match when there are extra words" $
+        SH.matchActionText "help with help" "help" `shouldBe` False
 
-      it "returns the action that matches the pattern with multiple words" $ do
-        let commandArgs = fst <$> SH.matchingAction "what do you think about hest" sampleActions
-        commandArgs `shouldBe` (Just ["think", "hest"])
-
-      it "returns Nothing if no action matches" $ do
-        let commandArgs = fst <$> SH.matchingAction "hest" sampleActions
-        commandArgs `shouldBe` Nothing
-
-    describe "regex matching" $ do
-      it "matches" $ do
-        let regex = R.mkRegex "set a timer to (.+) seconds"
-        (Just ["2"]) `shouldBe` (R.matchRegex regex "set a timer to 2 seconds")
-
-      it "matches" $ do
-        let regex = R.mkRegex "set a timer to (.+) seconds?"
-        (Just ["1"]) `shouldBe` (R.matchRegex regex "set a timer to 1 second")
+      it "allows extra question marks at the end" $
+        SH.matchActionText "what time is it" "what time is it?" `shouldBe` True

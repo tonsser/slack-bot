@@ -4,6 +4,7 @@ module SlackHelpers
     , processRequest
     , getAppRoot
     , concatPaths
+    , matchActionText
     )
   where
 
@@ -57,9 +58,6 @@ authenticateAction req = BA.UnauthticatedAction $ \postToSlack _ _ -> do
     _ <- postToSlack "Check your private messages"
     return $ Right ()
 
-nonGlobalRegex :: String -> String
-nonGlobalRegex str = "^" ++ str ++ "$"
-
 mapFst3 :: (a -> b) -> (a, c, d) -> (b, c, d)
 mapFst3 f (x, y, z) = (f x, y, z)
 
@@ -69,7 +67,7 @@ processRequest accessTokenM req =
       text :: String
       text = T.unpack $ textWithoutTriggerWord req
 
-      actions = map (mapFst3 nonGlobalRegex) $ authAction : BA.actions
+      actions = authAction : BA.actions
         where authAction = ("authenticate", authenticateAction req, BA.CategoryMisc)
 
       match :: Maybe ([String], BotAction, BA.ActionCategory)
@@ -101,17 +99,19 @@ processRequest accessTokenM req =
                      Left reason -> void $ postString reason
 
 matchingAction :: String -> [(String, BotAction, BA.ActionCategory)] -> Maybe ([String], BotAction, BA.ActionCategory)
-matchingAction t as = helper t $ map (mapFst3 R.mkRegex) as
+matchingAction t as = helper t as
   where
-    helper :: String -> [(R.Regex, BotAction, BA.ActionCategory)] -> Maybe ([String], BotAction, BA.ActionCategory)
+    helper :: String -> [(String, BotAction, BA.ActionCategory)] -> Maybe ([String], BotAction, BA.ActionCategory)
     helper _ [] = Nothing
-    helper text ((regex, h, c) : rest) =
-        let
-          match :: Maybe [String]
-          match = R.matchRegex regex text
-        in case match of
-             Nothing -> helper text rest
-             Just matches -> Just (matches, h, c)
+    helper text ((pat, h, c) : rest) = case matchActionText t pat of
+                                         Nothing -> helper text rest
+                                         Just matches -> Just (matches, h, c)
+
+matchActionText :: String -> String -> Maybe [String]
+matchActionText text pat = R.matchRegex regex text
+  where regex = R.mkRegex $ nonGlobalRegex $ optionalQuestionMark pat
+        nonGlobalRegex str = "^" ++ str ++ "$"
+        optionalQuestionMark str = str ++ "\\?*"
 
 textWithoutTriggerWord :: SlackRequest -> Text
 textWithoutTriggerWord req = T.strip $ T.pack $ L.replace (triggerWord req) "" $ T.unpack $ slackRequestText req

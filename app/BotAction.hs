@@ -2,8 +2,7 @@ module BotAction
   ( actions
   , BotAction (..)
   , fix
-  , ActionCategory(..)
-  ) where
+  , ActionCategory(..)) where
 
 import Import hiding (groupBy)
 import Data.Maybe (fromJust)
