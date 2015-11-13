@@ -7,6 +7,7 @@ module Github
     , issueTitle
     , issueBody
     , closeIssue
+    , commentOnIssue
     )
   where
 
@@ -66,6 +67,14 @@ reallyCloseIssue repo number = do
                                               }
     void <$> safeHttpLbs req
 
+data IssueComment = IssueComment
+                  { body :: String
+                  }
+
+instance ToJSON IssueComment where
+    toJSON s = object [ "body" .= body s
+                      ]
+
 commentOnIssue :: String -> Int -> String -> IO (Either GenericException ())
 commentOnIssue repo number text = do
     accessToken <- encodeTextToBS <$> getAccessToken
@@ -74,7 +83,7 @@ commentOnIssue repo number text = do
                  ]
     initReq <- parseUrl url
     let req = setQueryString params $ initReq { method = "POST"
-                                              , requestBody = RequestBodyBS $ encodeTextToBS $ T.pack $ "{\"body\":\"" ++ text ++ "\"}"
+                                              , requestBody = RequestBodyLBS $ encode IssueComment { body = text }
                                               , requestHeaders = [("User-Agent" :: CI ByteString, "Tonsser-Slack-Bot")]
                                               }
     void <$> safeHttpLbs req
