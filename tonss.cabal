@@ -38,6 +38,7 @@ library
                      Github
                      DuckDuckGo
                      EvalRuby
+                     BaconIpsum
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT

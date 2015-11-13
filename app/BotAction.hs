@@ -28,6 +28,7 @@ import HttpHelpers
 import EvalRuby
 import SlackTypes
 import Misc
+import qualified BaconIpsum
 
 type CommandMatches = [String]
 type PostToSlack = String -> IO (Either ErrorMsg ())
@@ -137,6 +138,10 @@ actions = [ ( "what time is it"
             , UnauthticatedAction closeIssue
             , CategoryGithub
             )
+          , ( "bacon ipsum me"
+            , UnauthticatedAction baconIpsum
+            , CategorySilly
+            )
           -- `authenticate` is overriden by `SlackHelpers` but has to be here
           -- otherwise it wont show in `help`
           , ( "authenticate"
@@ -144,6 +149,14 @@ actions = [ ( "what time is it"
             , CategoryMisc
             )
           ]
+
+baconIpsum :: UnauthenticatedActionHandler
+baconIpsum postToSlack _ _ = do
+    n <- fromJust <$> sample [1..7]
+    ps <- BaconIpsum.baconIpsum n
+    case ps of
+      Right x -> postToSlack $ intercalate ". " x
+      Left e -> postToSlack "There was an error" >> postToSlack (show e)
 
 closeIssue :: UnauthenticatedActionHandler
 closeIssue postToSlack [numberS, repo] req =
