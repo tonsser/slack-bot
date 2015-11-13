@@ -17,6 +17,8 @@ import Data.CaseInsensitive
 import HttpHelpers
 import Data.Aeson hiding (json)
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.Text as T
+import Control.Monad.Trans.Except
 
 data GithubIssue = GithubIssue
                  { issueNumber :: Int
@@ -46,8 +48,13 @@ issues repo = do
     body <- fmap responseBody <$> safeHttpLbs req
     return $ body >>= parseGithubIssues
 
-closeIssue :: String -> Int -> IO (Either GenericException ())
-closeIssue repo number = do
+closeIssue :: String -> Int -> String -> IO (Either GenericException ())
+closeIssue repo number username = runExceptT $ do
+  ExceptT $ commentOnIssue repo number ("Closed by " ++ username ++ " via Bot")
+  ExceptT $ reallyCloseIssue repo number
+
+reallyCloseIssue :: String -> Int -> IO (Either GenericException ())
+reallyCloseIssue repo number = do
     accessToken <- encodeTextToBS <$> getAccessToken
     let url = "https://api.github.com/repos/tonsser/" ++ repo ++ "/issues/" ++ show number
         params = [ ("access_token", Just accessToken)
@@ -55,6 +62,19 @@ closeIssue repo number = do
     initReq <- parseUrl url
     let req = setQueryString params $ initReq { method = "PATCH"
                                               , requestBody = RequestBodyLBS "{\"state\":\"closed\"}"
+                                              , requestHeaders = [("User-Agent" :: CI ByteString, "Tonsser-Slack-Bot")]
+                                              }
+    void <$> safeHttpLbs req
+
+commentOnIssue :: String -> Int -> String -> IO (Either GenericException ())
+commentOnIssue repo number text = do
+    accessToken <- encodeTextToBS <$> getAccessToken
+    let url = "https://api.github.com/repos/tonsser/" ++ repo ++ "/issues/" ++ show number ++ "/comments"
+        params = [ ("access_token", Just accessToken)
+                 ]
+    initReq <- parseUrl url
+    let req = setQueryString params $ initReq { method = "POST"
+                                              , requestBody = RequestBodyBS $ encodeTextToBS $ T.pack $ "{\"body\":\"" ++ text ++ "\"}"
                                               , requestHeaders = [("User-Agent" :: CI ByteString, "Tonsser-Slack-Bot")]
                                               }
     void <$> safeHttpLbs req

@@ -146,11 +146,11 @@ actions = [ ( "what time is it"
           ]
 
 closeIssue :: UnauthenticatedActionHandler
-closeIssue postToSlack [numberS, repo] _ =
+closeIssue postToSlack [numberS, repo] req =
     case (readMaybe numberS :: Maybe Int) of
       Nothing -> postToSlack "Couldn't parse number"
       Just number -> do
-        response <- GH.closeIssue repo number
+        response <- GH.closeIssue repo number (T.unpack $ slackRequestUsername req)
         case response of
           Right _ -> postToSlack "Done!"
           Left e -> postToSlack "There was an error" >> postToSlack (show e)
