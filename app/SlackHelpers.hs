@@ -1,7 +1,7 @@
 module SlackHelpers
     ( textWithoutTriggerWord
     , matchingAction
-    , processRequest
+    , findMatchAndProcessRequest
     , getAppRoot
     , concatPaths
     , matchActionText
@@ -14,42 +14,42 @@ import qualified Data.Text as T
 import qualified Text.Regex as R
 import UrlHelpers
 import qualified BotAction as BA
-import BotAction (BotAction)
 import SlackAPI
 
-processRequest :: Maybe Text -> SlackRequest -> IO ()
-processRequest accessTokenM req =
-    let
-      text :: String
-      text = T.unpack $ textWithoutTriggerWord req
+findMatchAndProcessRequest :: Maybe Text -> SlackRequest -> IO ()
+findMatchAndProcessRequest accessToken req =
+    case matchingAction (commandForRequest req) BA.actions of
+      Nothing -> void $ postResponseToRequest req "Sorry but I don't understand that. Type \"bot help\" to get a list of things I understand."
+      Just (matches, action) -> processRequest matches action accessToken req
 
-      match :: Maybe ([String], BotAction)
-      match = matchingAction text BA.actions
+postResponseToRequest :: SlackRequest -> String -> IO (Either a ())
+postResponseToRequest req txt = do
+  postResponseToSlack (destinationForRequest req) $ T.pack txt
+  return $ Right ()
 
-      destination :: SlackResponseDestination
-      destination = SlackResponseChannel $ slackRequestChannelName req
+destinationForRequest :: SlackRequest -> SlackResponseDestination
+destinationForRequest = SlackResponseChannel . slackRequestChannelName
 
-      postString txt = do
-        postResponseToSlack destination $ T.pack txt
-        return $ Right ()
-    in case match of
-         Nothing -> void $ postString "Sorry but I don't understand that. Type \"bot help\" to get a list of things I understand."
-         Just (matches, action) ->
-           case BA.actionHandler action of
-             BA.Unauthenticated action' -> do
-               res <- action' postString matches req
-               case res of
-                 Right () -> return ()
-                 Left reason -> void $ postString reason
+commandForRequest :: SlackRequest -> String
+commandForRequest = cs . textWithoutTriggerWord
 
-             BA.Authenticated action' ->
-               case accessTokenM of
-                 Nothing -> void $ postString "Authenticate required, type: \"bot authenticate\""
-                 Just accessToken -> do
-                   res <- action' accessToken postString matches req
-                   case res of
-                     Right () -> return ()
-                     Left reason -> void $ postString reason
+processRequest :: [String] -> BA.BotAction -> Maybe Text -> SlackRequest -> IO ()
+processRequest matches action accessToken req =
+    processPossiblyAuthenticatedAction (BA.actionHandler action) req accessToken matches
+
+processPossiblyAuthenticatedAction :: BA.ActionHandler -> SlackRequest -> Maybe Text -> [String] -> IO ()
+processPossiblyAuthenticatedAction (BA.Unauthenticated action) req _ matches = do
+    res <- action (postResponseToRequest req) matches req
+    case res of
+      Right () -> return ()
+      Left reason -> void $ postResponseToRequest req reason
+processPossiblyAuthenticatedAction (BA.Authenticated _) req Nothing _ =
+    void $ postResponseToRequest req "Authenticate required, type: \"bot authenticate\""
+processPossiblyAuthenticatedAction (BA.Authenticated action) req (Just token) matches = do
+    res <- action token (postResponseToRequest req) matches req
+    case res of
+      Right () -> return ()
+      Left reason -> void $ postResponseToRequest req reason
 
 matchingAction :: String -> [BA.BotAction] -> Maybe ([String], BA.BotAction)
 matchingAction t as = helper t as

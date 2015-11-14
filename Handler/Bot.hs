@@ -64,7 +64,7 @@ postBotR = do
                                          ]
       Right req -> do
         accessToken <- getAccessTokenForUserWithSlackId $ slackRequestUserId req
-        void $ liftIO $ forkIO $ SH.processRequest accessToken req
+        void $ liftIO $ forkIO $ SH.findMatchAndProcessRequest accessToken req
     return ()
 
 
