@@ -8,7 +8,7 @@ module SlackHelpers
     )
   where
 
-import Import
+import Import hiding (group)
 import SlackTypes
 import qualified Data.Text as T
 import qualified Text.Regex as R
@@ -35,9 +35,15 @@ commandForRequest = cs . textWithoutTriggerWord
 
 processRequest :: [String] -> BA.BotAction -> Maybe Text -> SlackRequest -> IO ()
 processRequest matches action accessToken req =
-    processPossiblyAuthenticatedAction (BA.actionHandler action) req accessToken matches
+    if userOfRequestInGroup req (BA.accessGroup action)
+      then processPossiblyAuthenticatedAction (BA.actionHandler action) req accessToken matches
+      else void $ postResponseToRequest req "Sorry but you don't have permission to do that"
 
-processPossiblyAuthenticatedAction :: BA.ActionHandler -> SlackRequest -> Maybe Text -> [String] -> IO ()
+processPossiblyAuthenticatedAction :: BA.ActionHandler
+                                   -> SlackRequest
+                                   -> Maybe Text
+                                   -> [String]
+                                   -> IO ()
 processPossiblyAuthenticatedAction (BA.Unauthenticated action) req _ matches = do
     res <- action (postResponseToRequest req) matches req
     case res of
@@ -50,6 +56,20 @@ processPossiblyAuthenticatedAction (BA.Authenticated action) req (Just token) ma
     case res of
       Right () -> return ()
       Left reason -> void $ postResponseToRequest req reason
+
+userOfRequestInGroup :: SlackRequest -> BA.AccessGroup -> Bool
+userOfRequestInGroup _ (BA.Everyone) = True
+userOfRequestInGroup req (BA.Developers) =
+    contains (slackRequestUsername req) [ "davidpdrsn"
+                                        , "planck"
+                                        , "karlo"
+                                        , "tkrogsboll"
+                                        , "jacobesp"
+                                        ]
+
+contains :: Eq a => a -> [a] -> Bool
+contains _ [] = False
+contains x (y : ys) = (x == y) || contains x ys
 
 matchingAction :: String -> [BA.BotAction] -> Maybe ([String], BA.BotAction)
 matchingAction t as = helper t as

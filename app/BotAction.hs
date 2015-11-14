@@ -4,6 +4,7 @@ module BotAction
   , fix
   , ActionCategory(..)
   , ActionHandler(..)
+  , AccessGroup(..)
   ) where
 
 import Import hiding (groupBy, Authenticated)
@@ -47,7 +48,11 @@ data BotAction = BotAction
                { command :: String
                , actionHandler :: ActionHandler
                , category :: ActionCategory
+               , accessGroup :: AccessGroup
                }
+
+data AccessGroup = Developers
+                 | Everyone
 
 data ActionCategory = CategoryGithub
                     | CategoryMisc
@@ -69,94 +74,117 @@ actions :: [BotAction]
 actions = [ BotAction { command = "authenticate"
                       , actionHandler = Unauthenticated authenticateAction
                       , category = CategoryMisc
+                      , accessGroup = Everyone
                       }
           , BotAction { command = "tell me a joke"
                       , actionHandler = Unauthenticated randomJoke
                       , category = CategorySilly
+                      , accessGroup = Everyone
                       }
           , BotAction { command = "flip a coin"
                       , actionHandler = Unauthenticated flipCoin
                       , category = CategoryUtility
+                      , accessGroup = Everyone
                       }
           , BotAction { command = "help"
                       , actionHandler = Unauthenticated help
                       , category = CategoryInformation
+                      , accessGroup = Everyone
                       }
           , BotAction { command = "set a timer to (.+) minutes"
                       , actionHandler = Unauthenticated timer
                       , category = CategoryUtility
+                      , accessGroup = Everyone
                       }
           , BotAction { command = "who should pickup lunch"
                       , actionHandler = Unauthenticated pickupLunch
                       , category = CategoryUtility
+                      , accessGroup = Everyone
                       }
           , BotAction { command = "cat me"
                       , actionHandler = Unauthenticated cat
                       , category = CategorySilly
+                      , accessGroup = Everyone
                       }
           , BotAction { command = "gif me (.+)"
                       , actionHandler = Unauthenticated gif
                       , category = CategorySilly
+                      , accessGroup = Everyone
                       }
           , BotAction { command = "whos there"
                       , actionHandler = Authenticated whosThere
                       , category = CategoryMisc
+                      , accessGroup = Everyone
                       }
           , BotAction { command = "is it time for coffee"
                       , actionHandler = Unauthenticated coffeeTime
                       , category = CategoryUtility
+                      , accessGroup = Everyone
                       }
           , BotAction { command = "whats a functor"
                       , actionHandler = Unauthenticated whatsFunctor
                       , category = CategoryInformation
+                      , accessGroup = Everyone
                       }
           , BotAction { command = "whats an applicative"
                       , actionHandler = Unauthenticated whatsApplicative
                       , category = CategoryInformation
+                      , accessGroup = Everyone
                       }
           , BotAction { command = "whats a monad"
                       , actionHandler = Unauthenticated whatsMonad
                       , category = CategoryInformation
+                      , accessGroup = Everyone
                       }
           , BotAction { command = "tell me about (.+)"
                       , actionHandler = Unauthenticated tellMeAbout
                       , category = CategoryUtility
+                      , accessGroup = Everyone
                       }
           , BotAction { command = "api metrics from (.+) to (.+)"
                       , actionHandler = Unauthenticated apiMetrics
                       , category = CategoryApiUtility
+                      , accessGroup = Everyone
                       }
           , BotAction { command = "api errors from (.+) to (.+)"
                       , actionHandler = Unauthenticated apiErrors
                       , category = CategoryApiUtility
+                      , accessGroup = Everyone
                       }
           , BotAction { command = "request feature (.+)"
                       , actionHandler = Unauthenticated requestFeature
                       , category = CategoryUtility
+                      , accessGroup = Everyone
                       }
           , BotAction { command = "ruby (.+)"
                       , actionHandler = Unauthenticated ruby
                       , category = CategoryUtility
+                      , accessGroup = Everyone
                       }
           , BotAction { command = "issues (.+)"
                       , actionHandler = Unauthenticated listIssues
                       , category = CategoryGithub
+                      , accessGroup = Everyone
                       }
           , BotAction { command = "close issue #(.+) (.+)"
                       , actionHandler = Unauthenticated closeIssue
                       , category = CategoryGithub
+                      , accessGroup = Developers
                       }
           , BotAction { command = "bacon ipsum me"
                       , actionHandler = Unauthenticated baconIpsum
                       , category = CategorySilly
+                      , accessGroup = Everyone
                       }
           , BotAction { command = "bacon me"
                       , actionHandler = Unauthenticated baconMe
                       , category = CategorySilly
+                      , accessGroup = Everyone
                       }
           , BotAction { command = "what time is it"
                       , actionHandler = Unauthenticated getTime
                       , category = CategoryInformation
+                      , accessGroup = Everyone
                       }
           ]
 
