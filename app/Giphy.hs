@@ -4,7 +4,7 @@ module Giphy
   where
 
 import Import hiding (httpLbs, newManager)
-import System.Environment
+import EnvHelpers
 import Data.Aeson.Lens
 import Control.Lens hiding (from, to)
 import HttpHelpers
@@ -28,4 +28,4 @@ parseSearchResult :: Value -> Maybe Text
 parseSearchResult v = v ^? key "data" . nth 0 . key "images" . key "original" . key "url" . _String
 
 getApiKey :: IO Text
-getApiKey = pack <$> fromMaybe (error "Missing env var TONSS_GIPHY_API_KEY") <$> lookupEnv "TONSS_GIPHY_API_KEY"
+getApiKey = cs <$> lookupEnvironmentVariable "TONSS_GIPHY_API_KEY"

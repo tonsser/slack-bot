@@ -20,14 +20,15 @@ import qualified Network.HTTP.Conduit as HTTP
 import Data.Aeson
 import qualified Data.ByteString.Lazy as LBS
 import Misc
+import EnvHelpers
 
 -- TODO: Change this to read from an ENV variable
-slackUrl :: String
-slackUrl = "https://hooks.slack.com/services/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"
+slackUrl :: IO String
+slackUrl = lookupEnvironmentVariable "TONSS_SLACK_INCOMING_WEBHOOK_URL"
 
 postResponseToSlack :: SlackResponseDestination -> Text -> IO ()
 postResponseToSlack destination text = do
-    initReq <- parseUrl slackUrl
+    initReq <- slackUrl >>= parseUrl
     let
       res = SlackResponse text destination
 

@@ -13,7 +13,7 @@ Look at how its done in `app/BotAction.hs`.
 - Create new a Slack Application. The redirect URI should be `https://warm-river-9355.herokuapp.com/slack/auth/callback`.
 - Configure an outgoing Slack webhook to POST to `https://warm-river-9355.herokuapp.com`.
 - Configure an incoming Slack webhook. Update `slackUrl` in `app/SlackHelpers.hs` to have the correct webhook URL.
-- Set `TONSS_SLACK_CLIENT_ID` and `TONSS_SLACK_CLIENT_SECRET` in environment variables.
+- Copy `.env.sample` to `.env` and fill in your `TONSS_SLACK_CLIENT_ID` and `TONSS_SLACK_CLIENT_SECRET`. This is required for testing oauth flow locally.
 
 ## Installing locally
 

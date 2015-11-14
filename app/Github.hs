@@ -12,7 +12,7 @@ module Github
   where
 
 import Import hiding (httpLbs, newManager)
-import System.Environment
+import EnvHelpers
 import Network.URI.Encode (encodeTextToBS)
 import Data.CaseInsensitive
 import HttpHelpers
@@ -117,4 +117,4 @@ createIssue issue = do
     void <$> safeHttpLbs req
 
 getAccessToken :: IO Text
-getAccessToken = pack <$> fromMaybe (error "Missing env var TONSS_GITHUB_ACCESS_TOKEN") <$> lookupEnv "TONSS_GITHUB_ACCESS_TOKEN"
+getAccessToken = cs <$> lookupEnvironmentVariable "TONSS_GITHUB_ACCESS_TOKEN"

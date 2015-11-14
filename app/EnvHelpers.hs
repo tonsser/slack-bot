@@ -1,5 +1,6 @@
 module EnvHelpers
     ( loadEnvironmentVariables
+    , lookupEnvironmentVariable
     )
   where
 
@@ -25,3 +26,6 @@ parseLine line = case splitOn "=" line of
 
 setEnvVar :: (String, String) -> IO ()
 setEnvVar (key, value) = setEnv key value
+
+lookupEnvironmentVariable :: String -> IO String
+lookupEnvironmentVariable key = fromMaybe (error "Missing env var " ++ key) <$> lookupEnv key
