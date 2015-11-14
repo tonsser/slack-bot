@@ -41,8 +41,8 @@ type AccessToken = Text
 type UnauthenticatedActionHandler = (PostToSlack -> CommandMatches -> SlackRequest -> IO (Either ErrorMsg ()))
 type AuthenticatedActionHandler = (AccessToken -> PostToSlack -> CommandMatches -> SlackRequest -> IO (Either ErrorMsg ()))
 
-data ActionHandler = Unauthenticated (PostToSlack -> CommandMatches -> SlackRequest -> IO (Either ErrorMsg ()))
-                   | Authenticated (AccessToken -> PostToSlack -> CommandMatches -> SlackRequest -> IO (Either ErrorMsg ()))
+data ActionHandler = Unauthenticated UnauthenticatedActionHandler
+                   | Authenticated AuthenticatedActionHandler
 
 data BotAction = BotAction
                { command :: String
