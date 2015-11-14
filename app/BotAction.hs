@@ -2,9 +2,11 @@ module BotAction
   ( actions
   , BotAction (..)
   , fix
-  , ActionCategory(..)) where
+  , ActionCategory(..)
+  , ActionHandler(..)
+  ) where
 
-import Import hiding (groupBy)
+import Import hiding (groupBy, Authenticated)
 import Data.Maybe (fromJust)
 import qualified Data.List.Utils as L
 import System.Random
@@ -38,8 +40,14 @@ type AccessToken = Text
 type UnauthenticatedActionHandler = (PostToSlack -> CommandMatches -> SlackRequest -> IO (Either ErrorMsg ()))
 type AuthenticatedActionHandler = (AccessToken -> PostToSlack -> CommandMatches -> SlackRequest -> IO (Either ErrorMsg ()))
 
-data BotAction = UnauthticatedAction UnauthenticatedActionHandler
-               | AuthenticatedAction AuthenticatedActionHandler
+data ActionHandler = Unauthenticated (PostToSlack -> CommandMatches -> SlackRequest -> IO (Either ErrorMsg ()))
+                   | Authenticated (AccessToken -> PostToSlack -> CommandMatches -> SlackRequest -> IO (Either ErrorMsg ()))
+
+data BotAction = BotAction
+               { command :: String
+               , actionHandler :: ActionHandler
+               , category :: ActionCategory
+               }
 
 data ActionCategory = CategoryGithub
                     | CategoryMisc
@@ -57,101 +65,99 @@ instance Show ActionCategory where
     show CategoryUtility = "Utility"
     show CategoryApiUtility = "Api utility"
 
-actions :: [(String, BotAction, ActionCategory)]
-actions = [ ( "what time is it"
-            , UnauthticatedAction getTime
-            , CategoryInformation
-            )
-          , ( "tell me a joke"
-            , UnauthticatedAction randomJoke
-            , CategorySilly
-            )
-          , ( "flip a coin"
-            , UnauthticatedAction flipCoin
-            , CategoryUtility
-            )
-          , ( "help"
-            , UnauthticatedAction help
-            , CategoryInformation
-            )
-          , ( "set a timer to (.+) minutes"
-            , UnauthticatedAction timer
-            , CategoryUtility
-            )
-          , ( "who should pickup lunch"
-            , UnauthticatedAction pickupLunch
-            , CategoryUtility
-            )
-          , ( "cat me"
-            , UnauthticatedAction cat
-            , CategorySilly
-            )
-          , ( "gif me (.+)"
-            , UnauthticatedAction gif
-            , CategorySilly
-            )
-          , ( "whos there"
-            , AuthenticatedAction whosThere
-            , CategoryMisc
-            )
-          , ( "is it time for coffee"
-            , UnauthticatedAction coffeeTime
-            , CategoryUtility
-            )
-          , ( "whats a functor"
-            , UnauthticatedAction whatsFunctor
-            , CategoryInformation
-            )
-          , ( "whats an applicative"
-            , UnauthticatedAction whatsApplicative
-            , CategoryInformation
-            )
-          , ( "whats a monad"
-            , UnauthticatedAction whatsMonad
-            , CategoryInformation
-            )
-          , ( "tell me about (.+)"
-            , UnauthticatedAction tellMeAbout
-            , CategoryUtility
-            )
-          , ( "api metrics from (.+) to (.+)"
-            , UnauthticatedAction apiMetrics
-            , CategoryApiUtility
-            )
-          , ( "api errors from (.+) to (.+)"
-            , UnauthticatedAction apiErrors
-            , CategoryApiUtility
-            )
-          , ( "request feature (.+)"
-            , UnauthticatedAction requestFeature
-            , CategoryUtility
-            )
-          , ( "ruby (.+)"
-            , UnauthticatedAction ruby
-            , CategoryUtility
-            )
-          , ( "issues (.+)"
-            , UnauthticatedAction listIssues
-            , CategoryGithub
-            )
-          , ( "close issue #(.+) (.+)"
-            , UnauthticatedAction closeIssue
-            , CategoryGithub
-            )
-          , ( "bacon ipsum me"
-            , UnauthticatedAction baconIpsum
-            , CategorySilly
-            )
-          , ( "bacon me"
-            , UnauthticatedAction baconMe
-            , CategorySilly
-            )
-          -- `authenticate` is overriden by `SlackHelpers` but has to be here
-          -- otherwise it wont show in `help`
-          , ( "authenticate"
-            , UnauthticatedAction doNothing
-            , CategoryMisc
-            )
+actions :: [BotAction]
+actions = [ BotAction { command = "authenticate"
+                      , actionHandler = Unauthenticated authenticateAction
+                      , category = CategoryMisc
+                      }
+          , BotAction { command = "tell me a joke"
+                      , actionHandler = Unauthenticated randomJoke
+                      , category = CategorySilly
+                      }
+          , BotAction { command = "flip a coin"
+                      , actionHandler = Unauthenticated flipCoin
+                      , category = CategoryUtility
+                      }
+          , BotAction { command = "help"
+                      , actionHandler = Unauthenticated help
+                      , category = CategoryInformation
+                      }
+          , BotAction { command = "set a timer to (.+) minutes"
+                      , actionHandler = Unauthenticated timer
+                      , category = CategoryUtility
+                      }
+          , BotAction { command = "who should pickup lunch"
+                      , actionHandler = Unauthenticated pickupLunch
+                      , category = CategoryUtility
+                      }
+          , BotAction { command = "cat me"
+                      , actionHandler = Unauthenticated cat
+                      , category = CategorySilly
+                      }
+          , BotAction { command = "gif me (.+)"
+                      , actionHandler = Unauthenticated gif
+                      , category = CategorySilly
+                      }
+          , BotAction { command = "whos there"
+                      , actionHandler = Authenticated whosThere
+                      , category = CategoryMisc
+                      }
+          , BotAction { command = "is it time for coffee"
+                      , actionHandler = Unauthenticated coffeeTime
+                      , category = CategoryUtility
+                      }
+          , BotAction { command = "whats a functor"
+                      , actionHandler = Unauthenticated whatsFunctor
+                      , category = CategoryInformation
+                      }
+          , BotAction { command = "whats an applicative"
+                      , actionHandler = Unauthenticated whatsApplicative
+                      , category = CategoryInformation
+                      }
+          , BotAction { command = "whats a monad"
+                      , actionHandler = Unauthenticated whatsMonad
+                      , category = CategoryInformation
+                      }
+          , BotAction { command = "tell me about (.+)"
+                      , actionHandler = Unauthenticated tellMeAbout
+                      , category = CategoryUtility
+                      }
+          , BotAction { command = "api metrics from (.+) to (.+)"
+                      , actionHandler = Unauthenticated apiMetrics
+                      , category = CategoryApiUtility
+                      }
+          , BotAction { command = "api errors from (.+) to (.+)"
+                      , actionHandler = Unauthenticated apiErrors
+                      , category = CategoryApiUtility
+                      }
+          , BotAction { command = "request feature (.+)"
+                      , actionHandler = Unauthenticated requestFeature
+                      , category = CategoryUtility
+                      }
+          , BotAction { command = "ruby (.+)"
+                      , actionHandler = Unauthenticated ruby
+                      , category = CategoryUtility
+                      }
+          , BotAction { command = "issues (.+)"
+                      , actionHandler = Unauthenticated listIssues
+                      , category = CategoryGithub
+                      }
+          , BotAction { command = "close issue #(.+) (.+)"
+                      , actionHandler = Unauthenticated closeIssue
+                      , category = CategoryGithub
+                      }
+          , BotAction { command = "bacon ipsum me"
+                      , actionHandler = Unauthenticated baconIpsum
+                      , category = CategorySilly
+                      }
+          , BotAction { command = "bacon me"
+                      , actionHandler = Unauthenticated baconMe
+                      , category = CategorySilly
+                      }
+          , BotAction { command = "what time is it"
+                      , actionHandler = Unauthenticated getTime
+                      , category = CategoryInformation
+                      }
           ]
 
 baconMe :: UnauthenticatedActionHandler
@@ -298,9 +304,6 @@ getTime postToSlack _ _ = do
     let text = mconcat ["The current time is ", date, ", at least where I am"]
     postToSlack text
 
-doNothing :: UnauthenticatedActionHandler
-doNothing _ _ _ = return $ Right ()
-
 httpGet :: String -> IO String
 httpGet url = BS.unpack . LBS.toStrict <$> HTTP.simpleHttp url
 
@@ -339,24 +342,18 @@ timer postToSlack [time] _ = do
         postToSlack "Times up!"
 timer _ _ _ = err "Couldn't parse time"
 
-err :: String -> IO (Either String a)
-err reason = return $ Left reason
-
 flipCoin :: UnauthenticatedActionHandler
 flipCoin postToSlack _ _ = sample ["heads", "tails"] >>= postToSlack . fromJust
 
 help :: UnauthenticatedActionHandler
 help postToSlack _ _ = postToSlack $ mconcat doc
   where
-    thr3 (_, _, x) = x
-    fst3 (x, _, _) = x
-
     categories :: [String]
-    categories = map categoryParagraph $ groupBy thr3 actions
+    categories = map categoryParagraph $ groupBy category actions
 
-    categoryParagraph :: (ActionCategory, [(String, BotAction, ActionCategory)]) -> String
+    categoryParagraph :: (ActionCategory, [BotAction]) -> String
     categoryParagraph (c, as) = intercalate "\n" [ "*" ++ show c ++ ":*"
-                                                 , intercalate "\n" $ map fst3 as
+                                                 , intercalate "\n" $ map command as
                                                  ]
 
     doc :: [String]
@@ -364,17 +361,6 @@ help postToSlack _ _ = postToSlack $ mconcat doc
           , "\n"
           , intercalate "\n\n" categories
           ]
-
-safeNth :: Int -> [a] -> Maybe a
-safeNth _ [] = Nothing
-safeNth 0 (x:_) = Just x
-safeNth n (_:xs) = safeNth (n - 1) xs
-
-sample :: [a] -> IO (Maybe a)
-sample [] = return Nothing
-sample xs = do
-    idx <- randomRIO (0, length xs - 1)
-    return $ safeNth idx xs
 
 randomJoke :: UnauthenticatedActionHandler
 randomJoke postToSlack _ _ = sample jokes >>= postToSlack . fromJust
@@ -408,3 +394,35 @@ runProcess cmd = SP.readProcess cmd [] []
 
 removeExtraSpaces :: String -> String
 removeExtraSpaces = fix (L.replace "  " " ")
+
+authenticateAction :: UnauthenticatedActionHandler
+authenticateAction postToSlack _ req = do
+    -- TODO: Don't use environment variables here
+    -- TODO: Concat the paths in a nicer way
+    appRoot <- getAppRoot
+    let
+      (slackAuth, _) = mapFst (T.unpack . T.intercalate "/") (renderRoute SlackAuthR)
+      params = [ ("team_id", slackRequestTeamId req)
+               , ("user_id", slackRequestUserId req)
+               ]
+      username = slackRequestUsername req
+      authUrl = appRoot ++ slackAuth ++ T.unpack (toQueryParams params)
+    postResponseToSlack (SlackResponseUsername username) $ T.pack authUrl
+    _ <- postToSlack "Check your private messages"
+    return $ Right ()
+
+---- Helpers
+
+safeNth :: Int -> [a] -> Maybe a
+safeNth _ [] = Nothing
+safeNth 0 (x:_) = Just x
+safeNth n (_:xs) = safeNth (n - 1) xs
+
+sample :: [a] -> IO (Maybe a)
+sample [] = return Nothing
+sample xs = do
+    idx <- randomRIO (0, length xs - 1)
+    return $ safeNth idx xs
+
+err :: String -> IO (Either String a)
+err reason = return $ Left reason

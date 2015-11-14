@@ -4,10 +4,11 @@ module SlackAPI
     , endPointWithParams
     , ApiMethod (..)
     , SlackUser (..)
+    , postResponseToSlack
     )
   where
 
-import Import
+import Import hiding (httpLbs, newManager)
 import Network.HTTP.Conduit
 import UrlHelpers
 import Data.Aeson
@@ -17,6 +18,8 @@ import Control.Monad.Trans.Maybe
 import Data.Aeson.Lens
 import Control.Lens
 import qualified Data.Vector as V
+import SlackTypes
+import EnvHelpers
 
 data SlackUser = SlackUser
                { slackUserName :: String
@@ -83,3 +86,21 @@ runEndPoint method params = do
                           ]
       url = unpack $ endPointWithParams method params'
     decode <$> simpleHttp url
+
+postResponseToSlack :: SlackResponseDestination -> Text -> IO ()
+postResponseToSlack destination text = do
+    initReq <- slackUrl >>= parseUrl
+    let
+      res = SlackResponse text destination
+
+      body = encode res
+
+      httpReq :: Request
+      httpReq = initReq { method = "POST"
+                        , requestBody = RequestBodyLBS body
+                        }
+    man <- newManager tlsManagerSettings
+    void $ httpLbs httpReq man
+
+slackUrl :: IO String
+slackUrl = lookupEnvironmentVariable "TONSS_SLACK_INCOMING_WEBHOOK_URL"
