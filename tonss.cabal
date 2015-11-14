@@ -39,6 +39,7 @@ library
                      DuckDuckGo
                      EvalRuby
                      BaconIpsum
+                     Heroku
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT
