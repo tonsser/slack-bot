@@ -4,10 +4,9 @@ import Import hiding (group)
 import SlackTypes
 import qualified Data.Text as T
 import qualified Text.Regex as R
-import UrlHelpers
 import qualified BotAction as BA
 import SlackAPI
-import Debug.Trace
+import qualified Data.List.Utils as L
 
 findMatchAndProcessRequest :: Maybe Text -> SlackRequest -> IO ()
 findMatchAndProcessRequest accessToken req =
@@ -24,7 +23,19 @@ destinationForRequest :: SlackRequest -> SlackResponseDestination
 destinationForRequest = SlackResponseChannel . slackRequestChannelName
 
 commandForRequest :: SlackRequest -> String
-commandForRequest = cs . textWithoutTriggerWord
+commandForRequest = replaceFunkyChars . cs . textWithoutTriggerWord
+
+replaceFunkyChars :: String -> String
+replaceFunkyChars str = foldr (uncurry L.replace) str replacements
+  where
+    replacements = [ ("“", "\"")
+                   , ("”", "\"")
+                   , ("‘", "'")
+                   , ("’", "'")
+                   , ("–", "--")
+                   , ("—", "---")
+                   , ("…", "...")
+                   ]
 
 processRequest :: [String] -> BA.BotAction -> Maybe Text -> SlackRequest -> IO ()
 processRequest matches action accessToken req =
