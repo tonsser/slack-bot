@@ -210,7 +210,20 @@ actions = [ BotAction { command = "authenticate"
                       , category = CategoryInstagram
                       , accessGroup = Everyone
                       }
+          , BotAction { command = "xkcd"
+                      , actionHandler = Unauthenticated randomXkcd
+                      , category = CategorySilly
+                      , accessGroup = Everyone
+                      }
           ]
+
+randomXkcd :: UnauthenticatedActionHandler
+randomXkcd postToSlack _ _ = do
+    (Just n) <- sample [1..1337]
+    url <- xkcd n
+    case url of
+      Right x -> postToSlack x
+      Left e -> postToSlack $ show e
 
 instaHashTag :: UnauthenticatedActionHandler
 instaHashTag postToSlack [tag] _ = runInstaAction postToSlack instagramHashTagSearch tag 1

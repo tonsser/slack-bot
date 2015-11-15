@@ -1,6 +1,7 @@
 module APIs
     ( instagramHashTagSearch
     , instagramRecentUserMedia
+    , xkcd
     )
   where
 
@@ -12,6 +13,14 @@ import qualified Data.Vector as V
 import Data.List.Utils
 import Control.Monad.Trans.Except
 import EnvHelpers
+
+xkcd :: Int -> IO (Either GenericException String)
+xkcd n = do
+    let
+      req = mkReq { reqDefUrl = "http://xkcd.com/" ++ show n ++ "/info.0.json"
+                  }
+    response <- runJsonRequest $ (\v -> cs <$> v ^? key "img" . _String) <$> fetchJson req
+    return $ unwrapOrError response
 
 getClientId :: IO String
 getClientId = lookupEnvironmentVariable "TONSS_INSTAGRAM_CLIENT_ID"
