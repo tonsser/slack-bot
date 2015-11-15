@@ -190,23 +190,23 @@ actions = [ BotAction { command = "authenticate"
                       , category = CategoryInformation
                       , accessGroup = Everyone
                       }
-          , BotAction { command = "insta tag {hash tag}"
-                      , actionHandler = Unauthenticated instaHashTag
-                      , category = CategoryInstagram
-                      , accessGroup = Everyone
-                      }
           , BotAction { command = "insta tag {hash tag} {count}"
                       , actionHandler = Unauthenticated instaHashTagCount
                       , category = CategoryInstagram
                       , accessGroup = Everyone
                       }
-          , BotAction { command = "insta user {username}"
-                      , actionHandler = Unauthenticated instaUser
+          , BotAction { command = "insta tag {hash tag}"
+                      , actionHandler = Unauthenticated instaHashTag
                       , category = CategoryInstagram
                       , accessGroup = Everyone
                       }
           , BotAction { command = "insta user {username} {count}"
                       , actionHandler = Unauthenticated instaUserCount
+                      , category = CategoryInstagram
+                      , accessGroup = Everyone
+                      }
+          , BotAction { command = "insta user {username}"
+                      , actionHandler = Unauthenticated instaUser
                       , category = CategoryInstagram
                       , accessGroup = Everyone
                       }
