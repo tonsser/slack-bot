@@ -62,6 +62,7 @@ data ActionCategory = CategoryGithub
                     | CategoryInformation
                     | CategoryUtility
                     | CategoryApiUtility
+                    | CategoryInstagram
                     deriving (Eq, Ord)
 
 instance Show ActionCategory where
@@ -71,6 +72,7 @@ instance Show ActionCategory where
     show CategoryInformation = "Information"
     show CategoryUtility = "Utility"
     show CategoryApiUtility = "Api utility"
+    show CategoryInstagram = "Instagram"
 
 actions :: [BotAction]
 actions = [ BotAction { command = "authenticate"
@@ -190,35 +192,61 @@ actions = [ BotAction { command = "authenticate"
                       }
           , BotAction { command = "insta tag {hash tag}"
                       , actionHandler = Unauthenticated instaHashTag
-                      , category = CategoryUtility
+                      , category = CategoryInstagram
+                      , accessGroup = Everyone
+                      }
+          , BotAction { command = "insta tag {hash tag} {count}"
+                      , actionHandler = Unauthenticated instaHashTagCount
+                      , category = CategoryInstagram
                       , accessGroup = Everyone
                       }
           , BotAction { command = "insta user {username}"
                       , actionHandler = Unauthenticated instaUser
-                      , category = CategoryUtility
+                      , category = CategoryInstagram
+                      , accessGroup = Everyone
+                      }
+          , BotAction { command = "insta user {username} {count}"
+                      , actionHandler = Unauthenticated instaUserCount
+                      , category = CategoryInstagram
                       , accessGroup = Everyone
                       }
           ]
 
 instaHashTag :: UnauthenticatedActionHandler
-instaHashTag postToSlack [tag] _ = do
-    urls <- instagramHashTagSearch tag
-    case urls of
-      Right x -> do
-        _ <- mapM postToSlack $ safeTake 3 x
-        return $ Right ()
-      Left e -> postToSlack "There was an error" >> postToSlack (show e)
+instaHashTag postToSlack [tag] _ = runInstaAction postToSlack instagramHashTagSearch tag 1
 instaHashTag postToSlack _ _ = postToSlack "Hash tags cannot contain spaces"
 
+instaHashTagCount :: UnauthenticatedActionHandler
+instaHashTagCount postToSlack [tag, c] _ =
+    case readMaybe c :: Maybe Int of
+      Just c' -> runInstaAction postToSlack instagramHashTagSearch tag c'
+      Nothing -> postToSlack "Couldn't parse count"
+instaHashTagCount postToSlack _ _ = postToSlack "Hash tags cannot contain spaces"
+
 instaUser :: UnauthenticatedActionHandler
-instaUser postToSlack [username] _ = do
-    urls <- instagramRecentUserMedia username
+instaUser postToSlack [username] _ = runInstaAction postToSlack instagramRecentUserMedia username 1
+instaUser postToSlack _ _ = postToSlack "Usernames cannot contain spaces"
+
+instaUserCount :: UnauthenticatedActionHandler
+instaUserCount postToSlack [username, c] _ =
+    case readMaybe c :: Maybe Int of
+      Just c' -> runInstaAction postToSlack instagramRecentUserMedia username c'
+      Nothing -> postToSlack "Couldn't parse count"
+instaUserCount postToSlack _ _ = postToSlack "Usernames cannot contain spaces"
+
+runInstaAction :: (Monad m, Show a1) =>
+                  (String -> m (Either a ()))
+                  -> (t -> Int -> m (Either a1 [String]))
+                  -> t
+                  -> Int
+                  -> m (Either a ())
+runInstaAction postToSlack f arg c = do
+    urls <- f arg c
     case urls of
       Right x -> do
-        _ <- mapM postToSlack $ safeTake 3 x
+        _ <- mapM postToSlack $ safeTake c x
         return $ Right ()
       Left e -> postToSlack "There was an error" >> postToSlack (show e)
-instaUser postToSlack _ _ = postToSlack "Usernames cannot contain spaces"
 
 safeTake :: Int -> [a] -> [a]
 safeTake _ [] = []

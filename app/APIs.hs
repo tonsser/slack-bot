@@ -16,13 +16,14 @@ import EnvHelpers
 getClientId :: IO String
 getClientId = lookupEnvironmentVariable "TONSS_INSTAGRAM_CLIENT_ID"
 
-instagramHashTagSearch :: String -> IO (Either GenericException [String])
-instagramHashTagSearch tag = do
+instagramHashTagSearch :: String -> Int -> IO (Either GenericException [String])
+instagramHashTagSearch tag count = do
     clientId <- getClientId
     let
       tag' = replace " " "-" tag
       req = mkReq { reqDefUrl = "https://api.instagram.com/v1/tags/" ++ tag' ++ "/media/recent"
                   , reqDefQueryParams = Just [ ("client_id", clientId)
+                                             , ("count", show count)
                                              ]
                   }
     response <- runJsonRequest $ parseInstagramMediaArray <$> fetchJson req
@@ -34,14 +35,15 @@ parseInstagramMediaArray v = do
     let y = sequence $ V.toList $ V.map (\x -> x ^? key "images" . key "standard_resolution" . key "url" . _String) v'
     fmap cs <$> y
 
-instagramRecentUserMedia :: String -> IO (Either GenericException [String])
-instagramRecentUserMedia query = do
+instagramRecentUserMedia :: String -> Int -> IO (Either GenericException [String])
+instagramRecentUserMedia query count = do
     clientId <- getClientId
     runExceptT $ do
       instaId <- ExceptT $ instagramGetUserId query
       let
         req = mkReq { reqDefUrl = "https://api.instagram.com/v1/users/" ++ instaId ++ "/media/recent"
                     , reqDefQueryParams = Just [ ("client_id", clientId)
+                                               , ("count", show count)
                                                ]
                     }
       ExceptT $ unwrapOrError <$> runJsonRequest (parseInstagramMediaArray <$> fetchJson req)
