@@ -34,6 +34,7 @@ import Misc
 import qualified BaconIpsum
 import APIs
 import Network.HTTP.Base (urlEncodeVars)
+import qualified Data.ByteString.Base64 as B64
 
 type CommandMatches = [String]
 type PostToSlack = String -> IO (Either ErrorMsg ())
@@ -221,7 +222,25 @@ actions = [ BotAction { command = "authenticate"
                       , category = CategoryUtility
                       , accessGroup = Everyone
                       }
+          , BotAction { command = "base64 encode {query}"
+                      , actionHandler = Unauthenticated base64Encode
+                      , category = CategoryUtility
+                      , accessGroup = Everyone
+                      }
+          , BotAction { command = "base64 decode {query}"
+                      , actionHandler = Unauthenticated base64Decode
+                      , category = CategoryUtility
+                      , accessGroup = Everyone
+                      }
           ]
+
+base64Encode :: UnauthenticatedActionHandler
+base64Encode postToSlack ws _ = postToSlack $ cs $ B64.encode $ cs $ unwords ws
+
+base64Decode :: UnauthenticatedActionHandler
+base64Decode postToSlack ws _ = case B64.decode $ cs $ unwords ws of
+                                  Left e -> postToSlack $ show e
+                                  Right x -> postToSlack $ cs x
 
 urlEncode' :: UnauthenticatedActionHandler
 urlEncode' postToSlack ws _ = do

@@ -114,6 +114,7 @@ library
                  , utf8-string
                  , string-conversions
                  , HTTP
+                 , base64-bytestring
 
 executable         tonss
     if flag(library-only)
