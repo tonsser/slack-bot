@@ -228,7 +228,7 @@ urlEncode' postToSlack ws _ = do
     let query = readMaybe (unwords ws) :: Maybe [(String, String)]
     case query of
       Just q -> postToSlack $ urlEncodeVars q
-      Nothing -> postToSlack "Error parsing, input be list of pairs like: \"[(\"key\", \"value\")]\""
+      Nothing -> postToSlack "Error parsing, input be list of pairs like: [(\"key\", \"value\")]"
 
 randomXkcd :: UnauthenticatedActionHandler
 randomXkcd postToSlack _ _ = do
