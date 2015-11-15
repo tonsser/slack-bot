@@ -33,6 +33,7 @@ import SlackTypes
 import Misc
 import qualified BaconIpsum
 import APIs
+import Network.HTTP.Base (urlEncodeVars)
 
 type CommandMatches = [String]
 type PostToSlack = String -> IO (Either ErrorMsg ())
@@ -215,7 +216,19 @@ actions = [ BotAction { command = "authenticate"
                       , category = CategorySilly
                       , accessGroup = Everyone
                       }
+          , BotAction { command = "url encode {query}"
+                      , actionHandler = Unauthenticated urlEncode'
+                      , category = CategoryUtility
+                      , accessGroup = Everyone
+                      }
           ]
+
+urlEncode' :: UnauthenticatedActionHandler
+urlEncode' postToSlack ws _ = do
+    let query = readMaybe (unwords ws) :: Maybe [(String, String)]
+    case query of
+      Just q -> postToSlack $ urlEncodeVars q
+      Nothing -> postToSlack "Error parsing, input be list of pairs like: \"[(\"key\", \"value\")]\""
 
 randomXkcd :: UnauthenticatedActionHandler
 randomXkcd postToSlack _ _ = do

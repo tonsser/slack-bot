@@ -113,6 +113,7 @@ library
                  , uri-encode
                  , utf8-string
                  , string-conversions
+                 , HTTP
 
 executable         tonss
     if flag(library-only)
