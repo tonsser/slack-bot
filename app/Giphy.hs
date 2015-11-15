@@ -10,8 +10,7 @@ import Control.Lens hiding (from, to)
 import HttpHelpers
 
 gifMe :: String -> IO (Either GenericException String)
-gifMe query =
-    do
+gifMe query = do
     apiKey <- getApiKey
     let req = mkReq { reqDefUrl = "http://api.giphy.com/v1/gifs/search"
                     , reqDefQueryParams = Just [ ("api_key", cs apiKey)

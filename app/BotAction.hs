@@ -32,6 +32,7 @@ import EvalRuby
 import SlackTypes
 import Misc
 import qualified BaconIpsum
+import APIs
 
 type CommandMatches = [String]
 type PostToSlack = String -> IO (Either ErrorMsg ())
@@ -187,7 +188,42 @@ actions = [ BotAction { command = "authenticate"
                       , category = CategoryInformation
                       , accessGroup = Everyone
                       }
+          , BotAction { command = "insta tag {hash tag}"
+                      , actionHandler = Unauthenticated instaHashTag
+                      , category = CategoryUtility
+                      , accessGroup = Everyone
+                      }
+          , BotAction { command = "insta user {username}"
+                      , actionHandler = Unauthenticated instaUser
+                      , category = CategoryUtility
+                      , accessGroup = Everyone
+                      }
           ]
+
+instaHashTag :: UnauthenticatedActionHandler
+instaHashTag postToSlack [tag] _ = do
+    urls <- instagramHashTagSearch tag
+    case urls of
+      Right x -> do
+        _ <- mapM postToSlack $ safeTake 3 x
+        return $ Right ()
+      Left e -> postToSlack "There was an error" >> postToSlack (show e)
+instaHashTag postToSlack _ _ = postToSlack "Hash tags cannot contain spaces"
+
+instaUser :: UnauthenticatedActionHandler
+instaUser postToSlack [username] _ = do
+    urls <- instagramRecentUserMedia username
+    case urls of
+      Right x -> do
+        _ <- mapM postToSlack $ safeTake 3 x
+        return $ Right ()
+      Left e -> postToSlack "There was an error" >> postToSlack (show e)
+instaUser postToSlack _ _ = postToSlack "Usernames cannot contain spaces"
+
+safeTake :: Int -> [a] -> [a]
+safeTake _ [] = []
+safeTake 0 _ = []
+safeTake n (x:xs) = x : safeTake (n-1) xs
 
 baconMe :: UnauthenticatedActionHandler
 baconMe postToSlack _ _ = do
