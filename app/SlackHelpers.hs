@@ -1,12 +1,4 @@
-module SlackHelpers
-    ( textWithoutTriggerWord
-    , matchingAction
-    , findMatchAndProcessRequest
-    , getAppRoot
-    , concatPaths
-    , matchActionText
-    )
-  where
+module SlackHelpers where
 
 import Import hiding (group)
 import SlackTypes
@@ -15,6 +7,7 @@ import qualified Text.Regex as R
 import UrlHelpers
 import qualified BotAction as BA
 import SlackAPI
+import Debug.Trace
 
 findMatchAndProcessRequest :: Maybe Text -> SlackRequest -> IO ()
 findMatchAndProcessRequest accessToken req =
@@ -82,10 +75,13 @@ matchingAction t as = helper t as
 
 matchActionText :: String -> String -> Maybe [String]
 matchActionText text pat = R.matchRegex regex text
-  where regex = R.mkRegex $ "^" ++ pat ++ "\\?*$"
+  where regex = R.mkRegex $ "^" ++ actionCommandToRegex pat ++ "\\?*$"
 
 textWithoutTriggerWord :: SlackRequest -> Text
 textWithoutTriggerWord req = T.pack $ R.subRegex pat (T.unpack $ slackRequestText req) ""
   where
     triggerWord = T.unpack $ slackRequestTriggerWord req
     pat = R.mkRegex $ "^" ++ triggerWord ++ " "
+
+actionCommandToRegex :: String -> String
+actionCommandToRegex str = R.subRegex (R.mkRegex "\\{[^}]+\\}") str "(.+)"

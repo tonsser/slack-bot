@@ -53,6 +53,7 @@ data BotAction = BotAction
 
 data AccessGroup = Developers
                  | Everyone
+                 deriving (Show)
 
 data ActionCategory = CategoryGithub
                     | CategoryMisc
@@ -91,7 +92,7 @@ actions = [ BotAction { command = "authenticate"
                       , category = CategoryInformation
                       , accessGroup = Everyone
                       }
-          , BotAction { command = "set a timer to (.+) minutes"
+          , BotAction { command = "set a timer to {number of minutes} minutes"
                       , actionHandler = Unauthenticated timer
                       , category = CategoryUtility
                       , accessGroup = Everyone
@@ -106,7 +107,7 @@ actions = [ BotAction { command = "authenticate"
                       , category = CategorySilly
                       , accessGroup = Everyone
                       }
-          , BotAction { command = "gif me (.+)"
+          , BotAction { command = "gif me {term}"
                       , actionHandler = Unauthenticated gif
                       , category = CategorySilly
                       , accessGroup = Everyone
@@ -136,37 +137,37 @@ actions = [ BotAction { command = "authenticate"
                       , category = CategoryInformation
                       , accessGroup = Everyone
                       }
-          , BotAction { command = "tell me about (.+)"
+          , BotAction { command = "tell me about {term}"
                       , actionHandler = Unauthenticated tellMeAbout
                       , category = CategoryUtility
                       , accessGroup = Everyone
                       }
-          , BotAction { command = "api metrics from (.+) to (.+)"
+          , BotAction { command = "api metrics from {natural language date} to {natural language date}"
                       , actionHandler = Unauthenticated apiMetrics
                       , category = CategoryApiUtility
                       , accessGroup = Everyone
                       }
-          , BotAction { command = "api errors from (.+) to (.+)"
+          , BotAction { command = "api errors from {natural language date} to {natural language date}"
                       , actionHandler = Unauthenticated apiErrors
                       , category = CategoryApiUtility
                       , accessGroup = Everyone
                       }
-          , BotAction { command = "request feature (.+)"
+          , BotAction { command = "request feature {text}"
                       , actionHandler = Unauthenticated requestFeature
                       , category = CategoryUtility
                       , accessGroup = Everyone
                       }
-          , BotAction { command = "ruby (.+)"
+          , BotAction { command = "ruby {ruby to evaluate}"
                       , actionHandler = Unauthenticated ruby
                       , category = CategoryUtility
                       , accessGroup = Everyone
                       }
-          , BotAction { command = "issues (.+)"
+          , BotAction { command = "issues {name of repo}"
                       , actionHandler = Unauthenticated listIssues
                       , category = CategoryGithub
                       , accessGroup = Everyone
                       }
-          , BotAction { command = "close issue #(.+) (.+)"
+          , BotAction { command = "close issue #{issue number} {repo name}"
                       , actionHandler = Unauthenticated closeIssue
                       , category = CategoryGithub
                       , accessGroup = Developers
