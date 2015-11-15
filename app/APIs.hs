@@ -2,6 +2,8 @@ module APIs
     ( instagramHashTagSearch
     , instagramRecentUserMedia
     , xkcd
+    , searchRubyGems
+    , RubyGem(..)
     )
   where
 
@@ -9,10 +11,48 @@ import Import hiding (replace)
 import HttpHelpers
 import Data.Aeson.Lens
 import Control.Lens
-import qualified Data.Vector as V
 import Data.List.Utils
 import Control.Monad.Trans.Except
 import EnvHelpers
+import qualified Data.Vector as V
+import Data.Aeson
+
+searchRubyGems :: String -> IO (Either GenericException [RubyGem])
+searchRubyGems query = do
+    let
+      resultToMaybe :: Result a -> Maybe a
+      resultToMaybe (Success x) = Just x
+      resultToMaybe _ = Nothing
+
+      parseRubyGems :: Value -> [RubyGem]
+      parseRubyGems (Array v) = catMaybes $ V.toList $ V.map (resultToMaybe . fromJSON) v
+      parseRubyGems _ = []
+
+      req = mkReq { reqDefUrl = "https://rubygems.org/api/v1/search.json"
+                  , reqDefQueryParams = Just [("query", query)]
+                  }
+    response <- runJsonRequest $ parseRubyGems <$> fetchJson req
+    case response of
+      Right xs -> return $ Right xs
+      Left e -> return $ Left e
+
+data RubyGem = RubyGem
+             { gemHomepageUri :: String
+             , gemInfo :: String
+             , gemProjectUri :: String
+             , gemVersionDownloads :: Int
+             , gemName :: String
+             } deriving (Show)
+
+instance FromJSON RubyGem where
+    parseJSON (Object v) = RubyGem <$>
+                           v .: "homepage_uri" <*>
+                           v .: "info" <*>
+                           v .: "project_uri" <*>
+                           v .: "version_downloads" <*>
+                           v .: "name"
+    -- A non-Object value is of the wrong type, so fail.
+    parseJSON _          = mzero
 
 xkcd :: Int -> IO (Either GenericException String)
 xkcd n = do

@@ -232,7 +232,32 @@ actions = [ BotAction { command = "authenticate"
                       , category = CategoryUtility
                       , accessGroup = Everyone
                       }
+          , BotAction { command = "rubygems {query}"
+                      , actionHandler = Unauthenticated rubyGems
+                      , category = CategoryUtility
+                      , accessGroup = Everyone
+                      }
           ]
+
+rubyGems :: UnauthenticatedActionHandler
+rubyGems postToSlack ws _ = do
+    let query = intercalate "+" ws
+    result <- searchRubyGems query
+    case result of
+      Right [] -> postToSlack "Didn't find any results"
+      Right gems -> do
+        void $ postToSlack "Here is what I found"
+        let
+          format :: RubyGem -> String
+          format gem = intercalate "\n" $ map ($ gem) [ ("*Name*: " ++) . gemName
+                                                      , ("*Homepage*: " ++) . gemHomepageUri
+                                                      , ("*Project*: " ++) . gemProjectUri
+                                                      , ("*Description*: " ++) . gemInfo
+                                                      , ("*Downloads of latest version*: " ++) . show . gemVersionDownloads
+                                                      ]
+        _ <- mapM (postToSlack . (++ "\n") . format) $ safeTake 3 gems
+        return $ Right ()
+      Left e -> postToSlack $ show e
 
 base64Encode :: UnauthenticatedActionHandler
 base64Encode postToSlack ws _ = postToSlack $ cs $ B64.encode $ cs $ unwords ws
