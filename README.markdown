@@ -1,6 +1,6 @@
 # Tonss
 
-A Slack written in Haskell
+A Slack bot written in Haskell
 
 ## Adding new actions
 
