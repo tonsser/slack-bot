@@ -50,8 +50,9 @@ processPossiblyAuthenticatedAction :: BA.ActionHandler
 processPossiblyAuthenticatedAction (BA.Unauthenticated action) req _ matches = do
     (_, fs) <- runStateT (action matches req) []
     case fs of
-      [f] -> liftM Right (f return)
+      [f] -> error "one" >> liftM Right (f return)
       _ -> do
+        error "two"
         evalAll (\x -> postResponseToRequest req x >> return "") fs
         return $ Left ()
 processPossiblyAuthenticatedAction (BA.Authenticated _) _ Nothing _ =
