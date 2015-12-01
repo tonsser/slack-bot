@@ -55,18 +55,21 @@ listDiff xs ys = Set.elems $ Set.difference (toSet xs) (toSet ys)
   where
     toSet = foldr Set.insert Set.empty
 
-postBotR :: Handler ()
+postBotR :: Handler String
 postBotR = do
     reqOrErr <- buildSlackRequestFromParams
     case reqOrErr of
-      Left missing -> putStrLn $ mconcat [ "Missing params: "
-                                         , T.intercalate ", " missing
-                                         ]
+      Left missing -> do
+        putStrLn $ mconcat [ "Missing params: "
+                           , T.intercalate ", " missing
+                           ]
+        return "Something went wrong, check logs"
       Right req -> do
         accessToken <- getAccessTokenForUserWithSlackId $ slackRequestUserId req
-        void $ liftIO $ forkIO $ SH.findMatchAndProcessRequest accessToken req
-    return ()
-
+        x <- liftIO $ SH.findMatchAndProcessRequest accessToken req
+        case x of
+          Left () -> return ""
+          Right str -> return str
 
 getAccessTokenForUserWithSlackId :: Text -> Handler (Maybe Text)
 getAccessTokenForUserWithSlackId slackUserId = runMaybeT $ do

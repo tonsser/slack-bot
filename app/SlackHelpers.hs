@@ -7,17 +7,16 @@ import qualified Text.Regex as R
 import qualified BotAction as BA
 import SlackAPI
 import qualified Data.List.Utils as L
+import Control.Monad.Trans.State (runStateT)
 
-findMatchAndProcessRequest :: Maybe Text -> SlackRequest -> IO ()
+findMatchAndProcessRequest :: Maybe Text -> SlackRequest -> IO (Either () String)
 findMatchAndProcessRequest accessToken req =
     case matchingAction (commandForRequest req) BA.actions of
-      Nothing -> void $ postResponseToRequest req "Sorry but I don't understand that. Type \"bot help\" to get a list of things I understand."
+      Nothing -> return $ Right "Sorry but I don't understand that. Type \"bot help\" to get a list of things I understand."
       Just (matches, action) -> processRequest matches action accessToken req
 
-postResponseToRequest :: SlackRequest -> String -> IO (Either a ())
-postResponseToRequest req txt = do
-  postResponseToSlack (destinationForRequest req) $ T.pack txt
-  return $ Right ()
+postResponseToRequest :: SlackRequest -> String -> IO ()
+postResponseToRequest req txt = void $ postResponseToSlack (destinationForRequest req) $ T.pack txt
 
 destinationForRequest :: SlackRequest -> SlackResponseDestination
 destinationForRequest = SlackResponseChannel . slackRequestChannelName
@@ -37,29 +36,35 @@ replaceFunkyChars str = foldr (uncurry L.replace) str replacements
                    , ("…", "...")
                    ]
 
-processRequest :: [String] -> BA.BotAction -> Maybe Text -> SlackRequest -> IO ()
+processRequest :: [String] -> BA.BotAction -> Maybe Text -> SlackRequest -> IO (Either () String)
 processRequest matches action accessToken req =
     if userOfRequestInGroup req (BA.accessGroup action)
       then processPossiblyAuthenticatedAction (BA.actionHandler action) req accessToken matches
-      else void $ postResponseToRequest req "Sorry but you don't have permission to do that"
+      else return $ Right "Sorry but you don't have permission to do that"
 
 processPossiblyAuthenticatedAction :: BA.ActionHandler
                                    -> SlackRequest
                                    -> Maybe Text
                                    -> [String]
-                                   -> IO ()
+                                   -> IO (Either () String)
 processPossiblyAuthenticatedAction (BA.Unauthenticated action) req _ matches = do
-    res <- action (postResponseToRequest req) matches req
-    case res of
-      Right () -> return ()
-      Left reason -> void $ postResponseToRequest req reason
-processPossiblyAuthenticatedAction (BA.Authenticated _) req Nothing _ =
-    void $ postResponseToRequest req "Authenticate required, type: \"bot authenticate\""
+    (_, fs) <- runStateT (action matches req) []
+    case fs of
+      [f] -> liftM Right (f return)
+      _ -> do
+        evalAll (\x -> postResponseToRequest req x >> return "") fs
+        return $ Left ()
+processPossiblyAuthenticatedAction (BA.Authenticated _) _ Nothing _ =
+    return $ Right "Authenticate required, type: \"bot authenticate\""
 processPossiblyAuthenticatedAction (BA.Authenticated action) req (Just token) matches = do
-    res <- action token (postResponseToRequest req) matches req
-    case res of
-      Right () -> return ()
-      Left reason -> void $ postResponseToRequest req reason
+    (_, fs) <- runStateT (action token matches req) []
+    case fs of
+      [f] -> liftM Right (f return)
+      _ -> do
+        evalAll (\x -> postResponseToRequest req x >> return "") fs
+        return $ Left ()
+
+evalAll f = foldr (\x -> (>>) (x f)) (return ())
 
 userOfRequestInGroup :: SlackRequest -> BA.AccessGroup -> Bool
 userOfRequestInGroup _ (BA.Everyone) = True
