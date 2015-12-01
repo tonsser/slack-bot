@@ -60,13 +60,13 @@ postToSlack :: String -> SlackState
 postToSlack str = do
     old <- get
     let new actuallyPost = actuallyPost str
-    put $ new : old
+    put $ old ++ [new]
 
 insertIO :: IO () -> SlackState
 insertIO action = do
     old <- get
     let new _ = action >> return ""
-    put $ new : old
+    put $ old ++ [new]
 
 data AccessGroup = Developers
                  | Everyone
