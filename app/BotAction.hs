@@ -544,7 +544,7 @@ help _ _ = postToSlack $ mconcat doc
 
     categoryParagraph :: (ActionCategory, [BotAction]) -> String
     categoryParagraph (c, as) = intercalate "\n" [ "*" ++ show c ++ ":*"
-                                                 , intercalate "\n" $ map command as
+                                                 , intercalate "\n" $ sort $ map command as
                                                  ]
 
     doc :: [String]
