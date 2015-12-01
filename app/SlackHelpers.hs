@@ -48,22 +48,22 @@ processPossiblyAuthenticatedAction :: BA.ActionHandler
                                    -> [String]
                                    -> IO (Either () String)
 processPossiblyAuthenticatedAction (BA.Unauthenticated action) req _ matches = do
-    (_, fs) <- runStateT (action matches req) []
-    case fs of
-      [f] -> liftM Right (f return)
-      _ -> do
-        evalAll (\x -> postResponseToRequest req x >> return "") fs
-        return $ Left ()
+    fs <- snd <$> runStateT (action matches req) []
+    postResponses fs req
 processPossiblyAuthenticatedAction (BA.Authenticated _) _ Nothing _ =
     return $ Right "Authenticate required, type: \"bot authenticate\""
 processPossiblyAuthenticatedAction (BA.Authenticated action) req (Just token) matches = do
-    (_, fs) <- runStateT (action token matches req) []
-    case fs of
-      [f] -> liftM Right (f return)
-      _ -> do
-        evalAll (\x -> postResponseToRequest req x >> return "") fs
-        return $ Left ()
+    fs <- snd <$> runStateT (action token matches req) []
+    postResponses fs req
 
+postResponses :: Monad m => [(String -> IO String) -> m a] -> SlackRequest -> m (Either () a)
+postResponses fs req = case fs of
+                         [f] -> liftM Right (f return)
+                         _ -> do
+                           evalAll (\x -> postResponseToRequest req x >> return "") fs
+                           return $ Left ()
+
+evalAll :: (Monad m, MonoFoldable c, Element c ~ (t -> m a)) => t -> c -> m ()
 evalAll f = foldr (\x -> (>>) (x f)) (return ())
 
 userOfRequestInGroup :: SlackRequest -> BA.AccessGroup -> Bool
