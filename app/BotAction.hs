@@ -87,6 +87,11 @@ actions = [ BotAction { command = "authenticate"
                       , category = CategorySilly
                       , accessGroup = Everyone
                       }
+          , BotAction { command = "tell me another joke"
+                      , actionHandler = Unauthenticated randomJoke'
+                      , category = CategorySilly
+                      , accessGroup = Everyone
+                      }
           , BotAction { command = "flip a coin"
                       , actionHandler = Unauthenticated flipCoin
                       , category = CategoryUtility
@@ -237,7 +242,26 @@ actions = [ BotAction { command = "authenticate"
                       , category = CategoryUtility
                       , accessGroup = Everyone
                       }
+          , BotAction { command = "how smart are you"
+                      , actionHandler = Unauthenticated howSmart
+                      , category = CategoryInformation
+                      , accessGroup = Everyone
+                      }
+          , BotAction { command = "what do you think about siri"
+                      , actionHandler = Unauthenticated thoughtsOnSiri
+                      , category = CategoryInformation
+                      , accessGroup = Everyone
+                      }
           ]
+
+thoughtsOnSiri :: UnauthenticatedActionHandler
+thoughtsOnSiri postToSlack _ _ = postToSlack "No comments"
+
+howSmart :: UnauthenticatedActionHandler
+howSmart postToSlack _ _ = postToSlack sentence
+    where sentence = intercalate "\n" [ "I'm quite smart should I say so myself"
+                                      , "I know about " ++ show (length actions) ++ " things"
+                                      ]
 
 rubyGems :: UnauthenticatedActionHandler
 rubyGems postToSlack ws _ = do
@@ -524,6 +548,10 @@ help postToSlack _ _ = postToSlack $ mconcat doc
           , "\n"
           , intercalate "\n\n" categories
           ]
+
+randomJoke' :: UnauthenticatedActionHandler
+randomJoke' postToSlack x y =
+    postToSlack "Okay here is another..." >> randomJoke postToSlack x y
 
 randomJoke :: UnauthenticatedActionHandler
 randomJoke postToSlack _ _ = sample jokes >>= postToSlack . fromJust
