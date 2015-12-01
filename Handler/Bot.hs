@@ -55,7 +55,7 @@ listDiff xs ys = Set.elems $ Set.difference (toSet xs) (toSet ys)
   where
     toSet = foldr Set.insert Set.empty
 
-postBotR :: Handler String
+postBotR :: Handler Value
 postBotR = do
     reqOrErr <- buildSlackRequestFromParams
     case reqOrErr of
@@ -68,8 +68,8 @@ postBotR = do
         accessToken <- getAccessTokenForUserWithSlackId $ slackRequestUserId req
         x <- liftIO $ SH.findMatchAndProcessRequest accessToken req
         case x of
-          Left () -> return ""
-          Right str -> return str
+          Left () -> return $ toJSON ([] :: [String])
+          Right str -> return $ toJSON $ OutgoingWebhookResponse $ cs str
 
 getAccessTokenForUserWithSlackId :: Text -> Handler (Maybe Text)
 getAccessTokenForUserWithSlackId slackUserId = runMaybeT $ do

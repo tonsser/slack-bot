@@ -15,7 +15,14 @@ data SlackResponse = SlackResponse
                    , slackResponseDestination :: SlackResponseDestination
                    }
 
--- "channel": "#other-channel"
+data OutgoingWebhookResponse = OutgoingWebhookResponse
+                             { outgoingWebhookResponseText :: Text
+                             }
+
+instance ToJSON OutgoingWebhookResponse where
+    toJSON (OutgoingWebhookResponse text) =
+      object [ "text" .= text
+             ]
 
 instance ToJSON SlackResponse where
     toJSON (SlackResponse text destination) =
