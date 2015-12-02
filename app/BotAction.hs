@@ -287,7 +287,7 @@ graphMe [query, startDate, endDate] _ = do
       (Right s, Right e) -> do
         response <- liftIO $ Dog.graph query s e
         case response of
-          Right graph -> postToSlack graph
+          Right graph -> postToSlack query >> postToSlack graph
           Left err -> postToSlack $ show err
       _ -> postToSlack "Couldn't parse dates"
 graphMe _ _ = postToSlack "Couldn't parse arguments"
