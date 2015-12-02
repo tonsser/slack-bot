@@ -36,6 +36,7 @@ import APIs
 import Network.HTTP.Base (urlEncodeVars)
 import qualified Data.ByteString.Base64 as B64
 import Control.Monad.Trans.State
+import qualified DataDog as Dog
 
 type CommandMatches = [String]
 type AccessToken = Text
@@ -271,7 +272,25 @@ actions = [ BotAction { command = "authenticate"
                       , category = CategorySilly
                       , accessGroup = Everyone
                       }
+          , BotAction { command = "graph me {DataDog query} from {natural language date} to {natural language date}"
+                      , actionHandler = Unauthenticated graphMe
+                      , category = CategoryApiUtility
+                      , accessGroup = Everyone
+                      }
           ]
+
+graphMe :: UnauthenticatedActionHandler
+graphMe [query, startDate, endDate] _ = do
+    start <- liftIO $ parseNaturalLanguageDateToPosixTime $ cs startDate
+    end <- liftIO $ parseNaturalLanguageDateToPosixTime $ cs endDate
+    case (start, end) of
+      (Right s, Right e) -> do
+        response <- liftIO $ Dog.graph query s e
+        case response of
+          Right graph -> postToSlack graph
+          Left err -> postToSlack $ show err
+      _ -> postToSlack "Couldn't parse dates"
+graphMe _ _ = postToSlack "Couldn't parse arguments"
 
 goodMorning :: UnauthenticatedActionHandler
 goodMorning _ req = postToSlack $ "Good morning, " ++ cs username

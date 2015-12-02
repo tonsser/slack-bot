@@ -40,6 +40,7 @@ library
                      EvalRuby
                      BaconIpsum
                      APIs
+                     DataDog
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT
