@@ -22,12 +22,16 @@ data OutgoingWebhookResponse = OutgoingWebhookResponse
 instance ToJSON OutgoingWebhookResponse where
     toJSON (OutgoingWebhookResponse text) =
       object [ "text" .= text
+             , "unfurl_media" .= True
+             , "unfurl_links" .= True
              ]
 
 instance ToJSON SlackResponse where
     toJSON (SlackResponse text destination) =
       object [ "text" .= text
              , "channel" .= showDestination destination
+             , "unfurl_media" .= True
+             , "unfurl_links" .= True
              ]
 
 data SlackRequest = SlackRequest
