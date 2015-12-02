@@ -266,10 +266,19 @@ actions = [ BotAction { command = "authenticate"
                       , category = CategoryInformation
                       , accessGroup = Everyone
                       }
+          , BotAction { command = "good morning"
+                      , actionHandler = Unauthenticated goodMorning
+                      , category = CategorySilly
+                      , accessGroup = Everyone
+                      }
           ]
 
+goodMorning :: UnauthenticatedActionHandler
+goodMorning _ req = postToSlack $ "Good morning, " ++ cs username
+  where username = slackRequestUsername req
+
 thoughtsOnSiri :: UnauthenticatedActionHandler
-thoughtsOnSiri _matches _req = postToSlack "No comments..."
+thoughtsOnSiri _ _ = postToSlack "No comments..."
 
 howSmart :: UnauthenticatedActionHandler
 howSmart _ _ = postToSlack sentence
