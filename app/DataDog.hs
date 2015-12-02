@@ -26,7 +26,9 @@ graph query start end = do
     case result of
       Left e -> return $ Left e
       Right Nothing -> return $ Left $ GenericException "Failed parsing json"
-      Right (Just x) -> return $ Right x
+      Right (Just graphUrl) -> do
+        _ <- performRequest $ mkReq { reqDefUrl = graphUrl }
+        return $ Right graphUrl
 
 parseResponse :: Value -> Maybe String
 parseResponse v = cs <$> v ^? key "snapshot_url" . _String
