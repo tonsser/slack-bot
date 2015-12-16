@@ -562,7 +562,9 @@ timer [time] _ = do
 timer _ _ = postToSlack "Couldn't parse time"
 
 flipCoin :: UnauthenticatedActionHandler
-flipCoin _ _ = liftIO (sample ["heads", "tails"]) >>= postToSlack . fromJust
+flipCoin _ _ = do
+    result <- fromJust <$> liftIO (sample ["heads", "tails"])
+    postToSlack $ "Its " ++ result ++ "!"
 
 help :: UnauthenticatedActionHandler
 help _ _ = postToSlack $ mconcat doc
