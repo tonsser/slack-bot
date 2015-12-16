@@ -24,7 +24,7 @@ import EnvHelpers
 
 data SlackUser = SlackUser
                { slackUserName :: String
-               } deriving (Show)
+               } deriving (Show, Eq)
 
 instance FromJSON SlackUser where
     parseJSON (Object v) = SlackUser <$>

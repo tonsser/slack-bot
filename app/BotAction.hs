@@ -6,6 +6,7 @@ module BotAction
   , ActionHandler(..)
   , AccessGroup(..)
   , SlackState
+  , samples
   ) where
 
 import Import hiding (groupBy, Authenticated, get)
@@ -15,6 +16,7 @@ import System.Random
 import qualified System.Process as SP
 import Control.Concurrent
 import Text.Read hiding (get)
+import Control.Monad.Trans.Maybe
 import qualified Network.HTTP.Conduit as HTTP
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Char8 as BS
@@ -123,7 +125,7 @@ actions = [ BotAction { command = "authenticate"
                       , accessGroup = Everyone
                       }
           , BotAction { command = "who should pickup lunch"
-                      , actionHandler = Unauthenticated pickupLunch
+                      , actionHandler = Authenticated pickupLunch
                       , category = CategoryUtility
                       , accessGroup = Everyone
                       }
@@ -542,11 +544,16 @@ cat _ _ = do
       Just [url] -> postToSlack url
       _ -> postToSlack "Something went wrong"
 
-pickupLunch :: UnauthenticatedActionHandler
-pickupLunch _ _ =
-    -- interact with slack api to find list of online users
-    -- pick two at random and return those
-    postToSlack "Not implemented yet"
+pickupLunch :: AuthenticatedActionHandler
+pickupLunch accessToken _ _ = do
+    users <- liftIO $ runMaybeT $ do
+      users <- MaybeT $ usersList accessToken
+      MaybeT $ return <$> samples 2 users
+    case users of
+      Nothing -> postToSlack "Problem talking to slack"
+      Just users' -> let list = intercalate " and " $ map slackUserName users'
+                         x = mconcat ["How about? ", list]
+                     in postToSlack x
 
 timer :: UnauthenticatedActionHandler
 timer [time] _ = do
@@ -652,3 +659,14 @@ runProcess cmd = SP.readProcess cmd [] []
 
 removeExtraSpaces :: String -> String
 removeExtraSpaces = fix (L.replace "  " " ")
+
+samples :: Eq a => Int -> [a] -> IO [a]
+samples 0 _ = return []
+samples n list = do
+    aSample <- fromJust <$> sample list
+    let list' = reject (== aSample) list
+    restOfSamples <- samples (n-1) list'
+    return $ aSample : restOfSamples
+
+reject :: (a -> Bool) -> [a] -> [a]
+reject f = filter (not . f)
