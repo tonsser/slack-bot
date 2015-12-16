@@ -2,8 +2,8 @@ module Handler.SlackAuth where
 
 import Import
 import qualified Data.Text as T
-import SlackHelpers
 import UrlHelpers
+import SlackAPI
 
 getSlackAuthR :: Handler Html
 getSlackAuthR = do
@@ -20,14 +20,17 @@ getSlackAuthR = do
 redirectToSlack :: Text -> Handler a
 redirectToSlack teamId = do
     appRoot <- liftIO getAppRoot
-    let
-      (callback, _) = renderRoute SlackAuthCallbackR
-      redirectUri = concatPaths $ T.pack appRoot : callback
-      queryParams = toQueryParams [ ("team", teamId)
-                                  , ("redirect_uri", redirectUri)
-                                  -- TODO: Store in settings
-                                  , ("client_id", "13857431237.13932343510")
-                                  , ("scope", "users:read")
-                                  ]
-    url <- toTextUrl $ "https://slack.com/oauth/authorize" `T.append` queryParams
-    redirect url
+    slackClientIdM <- liftIO clientId
+    case slackClientIdM of
+      Nothing -> error "Missing slack client id in ENV variables"
+      Just slackClientId -> do
+        let
+          (callback, _) = renderRoute SlackAuthCallbackR
+          redirectUri = concatPaths $ T.pack appRoot : callback
+          queryParams = toQueryParams [ ("team", teamId)
+                                      , ("redirect_uri", redirectUri)
+                                      , ("client_id", slackClientId)
+                                      , ("scope", "users:read")
+                                      ]
+        url <- toTextUrl $ "https://slack.com/oauth/authorize" `T.append` queryParams
+        redirect url

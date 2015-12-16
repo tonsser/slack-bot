@@ -5,6 +5,7 @@ module SlackAPI
     , ApiMethod (..)
     , SlackUser (..)
     , postResponseToSlack
+    , clientId
     )
   where
 
