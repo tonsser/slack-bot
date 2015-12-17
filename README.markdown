@@ -1,4 +1,4 @@
-# Tonss
+# Slack Bot
 
 A Slack bot written in Haskell
 
