@@ -150,6 +150,12 @@ test-suite test
                 ViewPatterns
                 TupleSections
 
+    other-modules:
+                Handler.CommonSpec
+                SlackAPISpec
+                SlackHelpersSpec
+                TestImport
+
     build-depends: base
                  , tonss
                  , yesod-test >= 1.4.3 && < 1.5

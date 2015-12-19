@@ -39,6 +39,7 @@ import Network.HTTP.Base (urlEncodeVars)
 import qualified Data.ByteString.Base64 as B64
 import Control.Monad.Trans.State
 import qualified DataDog as Dog
+import HttpHelpers (GenericException)
 
 type CommandMatches = [String]
 type AccessToken = Text
@@ -371,11 +372,11 @@ instaUserCount [username, c] _ =
       Nothing -> postToSlack "Couldn't parse count"
 instaUserCount _ _ = postToSlack "Usernames cannot contain spaces"
 
--- runInstaAction :: (Monad m, Show a1) =>
---                   -> (t -> Int -> m (Either a1 [String]))
---                   -> t
---                   -> Int
---                   -> m (Either a ())
+runInstaAction :: Show a =>
+                  (b -> Int -> IO (Either a [String]))
+                  -> b
+                  -> Int
+                  -> StateT [SlackResponseRunner] IO ()
 runInstaAction f arg c = do
     urls <- liftIO $ f arg c
     case urls of
@@ -467,11 +468,12 @@ apiMetrics [from, to] _ = postNewRelicData ls NR.getMetricsReport from to
                ]
 apiMetrics _ _ = postToSlack "Parse failed"
 
--- postNewRelicData :: [(Text, a -> Text)]
---                     -> (DateRepresentation -> DateRepresentation -> IO (Either GenericException a))
---                     -> String
---                     -> String
---                     -> IO b
+
+postNewRelicData :: [(Text, a -> Text)]
+                    -> (DateRepresentation -> DateRepresentation -> IO (Either GenericException a))
+                    -> String
+                    -> String
+                    -> StateT [SlackResponseRunner] IO ()
 postNewRelicData ls fetchData from to = do
     void $ postToSlack "1 second..."
     report <- liftIO $ runExceptT $ do

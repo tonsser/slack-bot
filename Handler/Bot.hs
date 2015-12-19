@@ -2,7 +2,6 @@ module Handler.Bot where
 
 import Import
 import SlackTypes
-import Control.Concurrent
 import Control.Monad.Trans.Maybe
 import qualified SlackHelpers as SH
 import qualified Data.Set as Set
