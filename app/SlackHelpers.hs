@@ -56,7 +56,7 @@ processPossiblyAuthenticatedAction (BA.Authenticated action) req (Just token) ma
     fs <- snd <$> runStateT (action token matches req) []
     postResponses fs req
 
-postResponses :: Monad m => [(String -> IO String) -> m a] -> SlackRequest -> m (Either () a)
+postResponses :: [(String -> IO String) -> IO String] -> SlackRequest -> IO (Either () String)
 postResponses fs req = case fs of
                          [f] -> liftM Right (f return)
                          _ -> do
