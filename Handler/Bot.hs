@@ -5,11 +5,66 @@ import SlackTypes
 import Control.Monad.Trans.Maybe
 import qualified SlackHelpers as SH
 import qualified Data.Set as Set
+import qualified BotAction as BA
 import Data.Maybe (fromJust)
 import qualified Data.Text as T
+import SlackAPI
 
 getBotR :: Handler Html
 getBotR = defaultLayout $ $(widgetFile "homepage")
+
+postBotR :: Handler Value
+postBotR = do
+    reqOrErr <- buildSlackRequestFromParams
+    case reqOrErr of
+      Left missing -> do
+        putStrLn $ mconcat [ "Missing params: "
+                           , T.intercalate ", " missing
+                           ]
+        return "Something went wrong, check logs"
+      Right req -> do
+        accessToken <- getAccessTokenForUserWithSlackId $ slackRequestUserId req
+        x <- liftIO $ SH.findMatchAndProcessRequest accessToken req
+        case x of
+          Right fs -> do
+            singleResponse <- liftIO $ postResponses fs req
+            case singleResponse of
+              Nothing -> return $ toJSON ([] :: [String])
+              Just response -> respondWith response
+          Left err -> respondWith err
+
+-- | Finding acces token
+
+getAccessTokenForUserWithSlackId :: Text -> Handler (Maybe Text)
+getAccessTokenForUserWithSlackId slackUserId = runMaybeT $ do
+    user <- MaybeT $ findUserWithFilters [UserSlackUserId ==. slackUserId]
+    return $ userAccessToken user
+
+findUserWithFilters :: [Filter User] -> Handler (Maybe User)
+findUserWithFilters filters = (fmap . fmap) entityVal (runDB $ selectFirst filters [])
+
+-- | Posting response back to Slack
+
+respondWith :: (Monad m, ConvertibleStrings a Text) => a -> m Value
+respondWith = return . toJSON . OutgoingWebhookResponse . cs
+
+postResponses :: (BotRequest r) => [BA.SlackResponseRunner] -> r -> IO (Maybe String)
+postResponses fs req = case fs of
+                         [f] -> liftM Just (f return)
+                         _ -> do
+                           evalAll (\x -> postResponseToRequest req x >> return "") fs
+                           return Nothing
+
+postResponseToRequest :: (BotRequest r) => r -> String -> IO ()
+postResponseToRequest req txt = void $ postResponseToSlack (destinationForRequest req) $ T.pack txt
+
+destinationForRequest :: (BotRequest r) => r -> SlackResponseDestination
+destinationForRequest = SlackResponseChannel . requestChannelName
+
+evalAll :: (Monad m, MonoFoldable c, Element c ~ (t -> m a)) => t -> c -> m ()
+evalAll f = foldr (\x -> (>>) (x f)) (return ())
+
+-- | Building slack request
 
 type MissingParams = [Text]
 
@@ -53,27 +108,3 @@ listDiff :: (Ord a) => [a] -> [a] -> [a]
 listDiff xs ys = Set.elems $ Set.difference (toSet xs) (toSet ys)
   where
     toSet = foldr Set.insert Set.empty
-
-postBotR :: Handler Value
-postBotR = do
-    reqOrErr <- buildSlackRequestFromParams
-    case reqOrErr of
-      Left missing -> do
-        putStrLn $ mconcat [ "Missing params: "
-                           , T.intercalate ", " missing
-                           ]
-        return "Something went wrong, check logs"
-      Right req -> do
-        accessToken <- getAccessTokenForUserWithSlackId $ slackRequestUserId req
-        x <- liftIO $ SH.findMatchAndProcessRequest accessToken req
-        case x of
-          Right () -> return $ toJSON ([] :: [String])
-          Left err -> return $ toJSON $ OutgoingWebhookResponse $ cs err
-
-getAccessTokenForUserWithSlackId :: Text -> Handler (Maybe Text)
-getAccessTokenForUserWithSlackId slackUserId = runMaybeT $ do
-    user <- MaybeT $ findUserWithFilters [UserSlackUserId ==. slackUserId]
-    return $ userAccessToken user
-
-findUserWithFilters :: [Filter User] -> Handler (Maybe User)
-findUserWithFilters filters = (fmap . fmap) entityVal (runDB $ selectFirst filters [])

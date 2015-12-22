@@ -5,11 +5,10 @@ import SlackTypes
 import qualified Data.Text as T
 import qualified Text.Regex as R
 import qualified BotAction as BA
-import SlackAPI
 import qualified Data.List.Utils as L
 import Control.Monad.Trans.State (execStateT)
 
-findMatchAndProcessRequest :: (BotRequest r) => Maybe Text -> r -> IO (Either String ())
+findMatchAndProcessRequest :: (BotRequest r) => Maybe Text -> r -> IO (Either String [BA.SlackResponseRunner])
 findMatchAndProcessRequest accessToken req =
     case matchingAction (commandForRequest req) BA.actions of
       Nothing -> return $ Left "Sorry but I don't understand that. Type \"bot help\" to get a list of things I understand."
@@ -56,7 +55,7 @@ actionCommandToRegex str = R.subRegex (R.mkRegex "\\{[^}]+\\}") str "(.+)"
 
 -- | Run action and post response into Slack
 
-processRequest :: (BotRequest r) => [String] -> BA.BotAction r -> Maybe Text -> r -> IO (Either String ())
+processRequest :: (BotRequest r) => [String] -> BA.BotAction r -> Maybe Text -> r -> IO (Either String [BA.SlackResponseRunner])
 processRequest matches action accessToken req =
     if userOfRequestInGroup req (BA.accessGroup action)
       then processPossiblyAuthenticatedAction (BA.actionHandler action) req accessToken matches
@@ -77,31 +76,13 @@ processPossiblyAuthenticatedAction :: (BotRequest r)
                                    -> r
                                    -> Maybe Text
                                    -> [String]
-                                   -> IO (Either String ())
-processPossiblyAuthenticatedAction (BA.Unauthenticated action) req _ matches = do
-    fs <- execStateT (action matches req) []
-    postResponses fs req
+                                   -> IO (Either String [BA.SlackResponseRunner])
+processPossiblyAuthenticatedAction (BA.Unauthenticated action) req _ matches =
+    Right <$> execStateT (action matches req) []
 processPossiblyAuthenticatedAction (BA.Authenticated _) _ Nothing _ =
     return $ Left "Authenticate required, type: \"bot authenticate\""
-processPossiblyAuthenticatedAction (BA.Authenticated action) req (Just token) matches = do
-    fs <- execStateT (action token matches req) []
-    postResponses fs req
-
-postResponses :: (BotRequest r) => [BA.SlackResponseRunner] -> r -> IO (Either String ())
-postResponses fs req = case fs of
-                         [f] -> liftM Left (f return)
-                         _ -> do
-                           evalAll (\x -> postResponseToRequest req x >> return "") fs
-                           return $ Right ()
-
-postResponseToRequest :: (BotRequest r) => r -> String -> IO ()
-postResponseToRequest req txt = void $ postResponseToSlack (destinationForRequest req) $ T.pack txt
-
-destinationForRequest :: (BotRequest r) => r -> SlackResponseDestination
-destinationForRequest = SlackResponseChannel . requestChannelName
-
-evalAll :: (Monad m, MonoFoldable c, Element c ~ (t -> m a)) => t -> c -> m ()
-evalAll f = foldr (\x -> (>>) (x f)) (return ())
+processPossiblyAuthenticatedAction (BA.Authenticated action) req (Just token) matches =
+    Right <$> execStateT (action token matches req) []
 
 -- | Helper functions
 
