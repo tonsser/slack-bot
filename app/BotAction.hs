@@ -5,9 +5,9 @@ module BotAction
   , ActionCategory(..)
   , ActionHandler(..)
   , AccessGroup(..)
-  , SlackState
+  , ResponseState
   , samples
-  , SlackResponseRunner
+  , ResponseRunner
   ) where
 
 import Import hiding (groupBy, Authenticated, get)
@@ -45,8 +45,8 @@ import HttpHelpers (GenericException)
 type CommandMatches = [String]
 type AccessToken = Text
 
-type UnauthenticatedActionHandler r = CommandMatches -> r -> SlackState
-type AuthenticatedActionHandler r = AccessToken -> CommandMatches -> r -> SlackState
+type UnauthenticatedActionHandler r = CommandMatches -> r -> ResponseState
+type AuthenticatedActionHandler r = AccessToken -> CommandMatches -> r -> ResponseState
 
 data (BotRequest r) => ActionHandler r = Unauthenticated (UnauthenticatedActionHandler r)
                                        | Authenticated (AuthenticatedActionHandler r)
@@ -58,16 +58,16 @@ data (BotRequest r) => BotAction r = BotAction
                                    , accessGroup :: AccessGroup
                                    }
 
-type SlackResponseRunner = (String -> IO String) -> IO String
-type SlackState = StateT [SlackResponseRunner] IO ()
+type ResponseRunner = (String -> IO String) -> IO String
+type ResponseState = StateT [ResponseRunner] IO ()
 
-postToSlack :: String -> SlackState
-postToSlack str = do
+postResponse :: String -> ResponseState
+postResponse str = do
     old <- get
     let new actuallyPost = actuallyPost str
     put $ old ++ [new]
 
-insertIO :: IO () -> SlackState
+insertIO :: IO () -> ResponseState
 insertIO action = do
     old <- get
     let new _ = action >> return ""
@@ -291,20 +291,20 @@ graphMe [query, startDate, endDate] _ = do
       (Right s, Right e) -> do
         response <- liftIO $ Dog.graph query s e
         case response of
-          Right graph -> postToSlack query >> postToSlack graph
-          Left err -> postToSlack $ show err
-      _ -> postToSlack "Couldn't parse dates"
-graphMe _ _ = postToSlack "Couldn't parse arguments"
+          Right graph -> postResponse query >> postResponse graph
+          Left err -> postResponse $ show err
+      _ -> postResponse "Couldn't parse dates"
+graphMe _ _ = postResponse "Couldn't parse arguments"
 
 goodMorning :: (BotRequest r) => UnauthenticatedActionHandler r
-goodMorning _ req = postToSlack $ "Good morning, " ++ cs username
+goodMorning _ req = postResponse $ "Good morning, " ++ cs username
   where username = requestUsername req
 
 thoughtsOnSiri :: (BotRequest r) => UnauthenticatedActionHandler r
-thoughtsOnSiri _ _ = postToSlack "No comments..."
+thoughtsOnSiri _ _ = postResponse "No comments..."
 
 howSmart :: forall r . (BotRequest r) => UnauthenticatedActionHandler r
-howSmart _ _ = postToSlack sentence
+howSmart _ _ = postResponse sentence
     where
       sentence = intercalate "\n" [ "I'm quite smart should I say so myself"
                                   , "I know about " ++ show (length (actions :: [BotAction r])) ++ " things"
@@ -315,9 +315,9 @@ rubyGems ws _ = do
     let query = intercalate "+" ws
     result <- liftIO $ searchRubyGems query
     case result of
-      Right [] -> postToSlack "Didn't find any results"
+      Right [] -> postResponse "Didn't find any results"
       Right gems -> do
-        void $ postToSlack "Here is what I found"
+        void $ postResponse "Here is what I found"
         let
           format :: RubyGem -> String
           format gem = intercalate "\n" $ map ($ gem) [ ("*Name*: " ++) . gemName
@@ -326,64 +326,64 @@ rubyGems ws _ = do
                                                       , ("*Description*: " ++) . gemInfo
                                                       , ("*Downloads of latest version*: " ++) . show . gemVersionDownloads
                                                       ]
-        mapM_ (postToSlack . (++ "\n") . format) $ safeTake 3 gems
-      Left e -> postToSlack $ show e
+        mapM_ (postResponse . (++ "\n") . format) $ safeTake 3 gems
+      Left e -> postResponse $ show e
 
 base64Encode :: (BotRequest r) => UnauthenticatedActionHandler r
-base64Encode ws _ = postToSlack $ cs $ B64.encode $ cs $ unwords ws
+base64Encode ws _ = postResponse $ cs $ B64.encode $ cs $ unwords ws
 
 base64Decode :: (BotRequest r) => UnauthenticatedActionHandler r
 base64Decode ws _ = case B64.decode $ cs $ unwords ws of
-                      Left e -> postToSlack $ show e
-                      Right x -> postToSlack $ cs x
+                      Left e -> postResponse $ show e
+                      Right x -> postResponse $ cs x
 
 urlEncode' :: (BotRequest r) => UnauthenticatedActionHandler r
 urlEncode' ws _ = do
     let query = readMaybe (unwords ws) :: Maybe [(String, String)]
     case query of
-      Just q -> postToSlack $ urlEncodeVars q
-      Nothing -> postToSlack "Error parsing, input be list of pairs like: [(\"key\", \"value\")]"
+      Just q -> postResponse $ urlEncodeVars q
+      Nothing -> postResponse "Error parsing, input be list of pairs like: [(\"key\", \"value\")]"
 
 randomXkcd :: (BotRequest r) => UnauthenticatedActionHandler r
 randomXkcd _ _ = do
     (Just n) <- liftIO $ sample [1..1337]
     url <- liftIO $ xkcd n
     case url of
-      Right x -> postToSlack x
-      Left e -> postToSlack $ show e
+      Right x -> postResponse x
+      Left e -> postResponse $ show e
 
 instaHashTag :: (BotRequest r) => UnauthenticatedActionHandler r
 instaHashTag [tag] _ = runInstaAction instagramHashTagSearch tag 1
-instaHashTag _ _ = postToSlack "Hash tags cannot contain spaces"
+instaHashTag _ _ = postResponse "Hash tags cannot contain spaces"
 
 instaHashTagCount :: (BotRequest r) => UnauthenticatedActionHandler r
 instaHashTagCount [tag, c] _ =
     case readMaybe c :: Maybe Int of
       Just c' -> runInstaAction instagramHashTagSearch tag c'
-      Nothing -> postToSlack "Couldn't parse count"
-instaHashTagCount _ _ = postToSlack "Hash tags cannot contain spaces"
+      Nothing -> postResponse "Couldn't parse count"
+instaHashTagCount _ _ = postResponse "Hash tags cannot contain spaces"
 
 instaUser :: (BotRequest r) => UnauthenticatedActionHandler r
 instaUser [username] _ = runInstaAction instagramRecentUserMedia username 1
-instaUser _ _ = postToSlack "Usernames cannot contain spaces"
+instaUser _ _ = postResponse "Usernames cannot contain spaces"
 
 instaUserCount :: (BotRequest r) => UnauthenticatedActionHandler r
 instaUserCount [username, c] _ =
     case readMaybe c :: Maybe Int of
       Just c' -> runInstaAction instagramRecentUserMedia username c'
-      Nothing -> postToSlack "Couldn't parse count"
-instaUserCount _ _ = postToSlack "Usernames cannot contain spaces"
+      Nothing -> postResponse "Couldn't parse count"
+instaUserCount _ _ = postResponse "Usernames cannot contain spaces"
 
 runInstaAction :: Show a =>
                   (b -> Int -> IO (Either a [String]))
                   -> b
                   -> Int
-                  -> StateT [SlackResponseRunner] IO ()
+                  -> StateT [ResponseRunner] IO ()
 runInstaAction f arg c = do
     urls <- liftIO $ f arg c
     case urls of
-      Right x -> mapM_ postToSlack $ safeTake c x
-      Left e -> postToSlack "There was an error" >> postToSlack (show e)
+      Right x -> mapM_ postResponse $ safeTake c x
+      Left e -> postResponse "There was an error" >> postResponse (show e)
 
 baconMe :: (BotRequest r) => UnauthenticatedActionHandler r
 baconMe _ _ = do
@@ -396,64 +396,64 @@ baconMe _ _ = do
                                         , "http://dudefoods.com/wordpress/wp-content/uploads/2013/05/BaconWeaveTaco3111.jpg"
                                         , "https://timenewsfeed.files.wordpress.com/2013/05/nf_bacon_longevity_0508.jpg?w=480&h=320&crop=1"
                                         ]
-    postToSlack img
+    postResponse img
 
 baconIpsum :: (BotRequest r) => UnauthenticatedActionHandler r
 baconIpsum _ _ = do
     n <- liftIO $ fromJust <$> sample [1..7]
     ps <- liftIO $ BaconIpsum.baconIpsum n
     case ps of
-      Right x -> postToSlack $ intercalate ". " x
-      Left e -> postToSlack "There was an error" >> postToSlack (show e)
+      Right x -> postResponse $ intercalate ". " x
+      Left e -> postResponse "There was an error" >> postResponse (show e)
 
 closeIssue :: (BotRequest r) => UnauthenticatedActionHandler r
 closeIssue [numberS, repo] req =
     case (readMaybe numberS :: Maybe Int) of
-      Nothing -> postToSlack "Couldn't parse number"
+      Nothing -> postResponse "Couldn't parse number"
       Just number -> do
         response <- liftIO $ GH.closeIssue repo number (T.unpack $ requestUsername req)
         case response of
-          Right _ -> postToSlack "Done!"
-          Left e -> postToSlack "There was an error" >> postToSlack (show e)
-closeIssue _ _ = postToSlack "Couldn't parse that message... :("
+          Right _ -> postResponse "Done!"
+          Left e -> postResponse "There was an error" >> postResponse (show e)
+closeIssue _ _ = postResponse "Couldn't parse that message... :("
 
 listIssues :: (BotRequest r) => UnauthenticatedActionHandler r
 listIssues [repo] _ = do
     issues <- liftIO $ GH.issues repo
     case issues of
-      Left e ->  postToSlack "There was an error" >> postToSlack (show e)
+      Left e ->  postResponse "There was an error" >> postResponse (show e)
       Right is ->
         let prettyPrintIssue i = intercalate "\n" [ "Title: " ++ GH.issueTitle i
                                                   , "Number: #" ++ show (GH.issueNumber i)
                                                   , "URL: " ++ GH.issueUrl i
                                                   ]
             text = intercalate "\n\n" $ map prettyPrintIssue $ reverse is
-        in postToSlack text
-listIssues _ _ = postToSlack "Repo name cannot contain spaces"
+        in postResponse text
+listIssues _ _ = postResponse "Repo name cannot contain spaces"
 
 ruby :: (BotRequest r) => UnauthenticatedActionHandler r
 ruby args _ = do
     let command = intercalate "+" args
     response <- liftIO $ evalRuby command
     case response of
-      Right output -> postToSlack output
-      Left e -> postToSlack "There was an error..." >> postToSlack (show e)
+      Right output -> postResponse output
+      Left e -> postResponse "There was an error..." >> postResponse (show e)
 
 requestFeature :: (BotRequest r) => UnauthenticatedActionHandler r
-requestFeature args slackReq = do
+requestFeature args req = do
     let pharse = intercalate "+" args
         issue = GH.FeatureRequest { title = pharse
-                                  , username = T.unpack $ requestUsername slackReq
+                                  , username = T.unpack $ requestUsername req
                                   }
     response <- liftIO $ GH.createIssue issue
     case response of
-      Right () -> postToSlack "Noted!"
-      Left e -> postToSlack "There was an error..." >> postToSlack (show e)
+      Right () -> postResponse "Noted!"
+      Left e -> postResponse "There was an error..." >> postResponse (show e)
 
 apiErrors :: (BotRequest r) => UnauthenticatedActionHandler r
 apiErrors [from, to] _ = postNewRelicData ls NR.getErrorCount from to
     where ls = [ ("Error count", NR.errorCount) ]
-apiErrors _ _ = postToSlack "Parse failed"
+apiErrors _ _ = postResponse "Parse failed"
 
 apiMetrics :: (BotRequest r) => UnauthenticatedActionHandler r
 apiMetrics [from, to] _ = postNewRelicData ls NR.getMetricsReport from to
@@ -468,66 +468,66 @@ apiMetrics [from, to] _ = postNewRelicData ls NR.getMetricsReport from to
                , ("Requests per minute", NR.requestsPerMinute)
                , ("Standard deviation", NR.standardDeviation)
                ]
-apiMetrics _ _ = postToSlack "Parse failed"
+apiMetrics _ _ = postResponse "Parse failed"
 
 
 postNewRelicData :: [(Text, a -> Text)]
                     -> (DateRepresentation -> DateRepresentation -> IO (Either GenericException a))
                     -> String
                     -> String
-                    -> StateT [SlackResponseRunner] IO ()
+                    -> StateT [ResponseRunner] IO ()
 postNewRelicData ls fetchData from to = do
-    void $ postToSlack "1 second..."
+    void $ postResponse "1 second..."
     report <- liftIO $ runExceptT $ do
       fromDate <- ExceptT $ parseNaturalLanguageDate $ pack from
       toDate <- ExceptT $ parseNaturalLanguageDate $ pack to
       ExceptT $ fetchData fromDate toDate
     case report of
-      Left e -> postToSlack $ show e
-      Right r -> postToSlack $ intercalate "\n" $ map (\(t, f) -> T.unpack t ++ ": " ++ T.unpack (f r)) ls
+      Left e -> postResponse $ show e
+      Right r -> postResponse $ intercalate "\n" $ map (\(t, f) -> T.unpack t ++ ": " ++ T.unpack (f r)) ls
 
 tellMeAbout :: (BotRequest r) => UnauthenticatedActionHandler r
 tellMeAbout args _ = do
     let phrase = intercalate "+" args
     response <- liftIO $ DG.tellMeAbout phrase
     case response of
-      Left e -> postToSlack (show e)
-      Right answer -> postToSlack answer
+      Left e -> postResponse (show e)
+      Right answer -> postResponse answer
 
 whatsFunctor :: (BotRequest r) => UnauthenticatedActionHandler r
-whatsFunctor _ _ = postToSlack $ mconcat [ "class Functor (f :: * -> *) where\n"
+whatsFunctor _ _ = postResponse $ mconcat [ "class Functor (f :: * -> *) where\n"
                                                    , "  fmap :: (a -> b) -> f a -> f b"
                                                    ]
 
 whatsApplicative :: (BotRequest r) => UnauthenticatedActionHandler r
-whatsApplicative _ _ = postToSlack $ mconcat [ "class Functor f => Applicative (f :: * -> *) where\n"
+whatsApplicative _ _ = postResponse $ mconcat [ "class Functor f => Applicative (f :: * -> *) where\n"
                                                        , "  pure :: a -> f a\n"
                                                        , "  (<*>) :: f (a -> b) -> f a -> f b"
                                                        ]
 
 whatsMonad :: (BotRequest r) => UnauthenticatedActionHandler r
-whatsMonad _ _ = postToSlack $ mconcat [ "class Applicative m => Monad (m :: * -> *) where\n"
+whatsMonad _ _ = postResponse $ mconcat [ "class Applicative m => Monad (m :: * -> *) where\n"
                                                  , "  (>>=) :: m a -> (a -> m b) -> m b\n"
                                                  , "  return :: a -> m a"
                                                  ]
 
 coffeeTime :: (BotRequest r) => UnauthenticatedActionHandler r
-coffeeTime _ _ = postToSlack "Let me check on that" >> postToSlack "Yes it is!"
+coffeeTime _ _ = postResponse "Let me check on that" >> postResponse "Yes it is!"
 
 whosThere :: (BotRequest r) => AuthenticatedActionHandler r
 whosThere accessToken _ _ = do
     users <- liftIO $ usersList accessToken
     case users of
-      Nothing -> postToSlack "Problem with slack"
+      Nothing -> postResponse "Problem with slack"
       Just users' -> let x = mconcat ["Online users: ", list]
                            where list = intercalate ", " $ map slackUserName users'
-                     in postToSlack x
+                     in postResponse x
 
 getTime :: (BotRequest r) => UnauthenticatedActionHandler r
 getTime _ _ = do
     date <- liftIO $ removeExtraSpaces <$> runProcess "date"
     let text = mconcat ["The current time is ", date, ", at least where I am"]
-    postToSlack text
+    postResponse text
 
 httpGet :: String -> IO String
 httpGet url = BS.unpack . LBS.toStrict <$> HTTP.simpleHttp url
@@ -537,16 +537,16 @@ gif phrase _ = do
     let query = intercalate "+" phrase
     urlM <- liftIO $ gifMe query
     case urlM of
-      Left e -> postToSlack $ show e
-      Right url -> postToSlack url
+      Left e -> postResponse $ show e
+      Right url -> postResponse url
 
 -- TODO: Make a module that wraps this, and uses safeHttpLbs
 cat :: (BotRequest r) => UnauthenticatedActionHandler r
 cat _ _ = do
     resp <- liftIO $ httpGet "http://thecatapi.com/api/images/get?format=xml"
     case matchRegex (mkRegex "<url>(.+)</url>") resp of
-      Just [url] -> postToSlack url
-      _ -> postToSlack "Something went wrong"
+      Just [url] -> postResponse url
+      _ -> postResponse "Something went wrong"
 
 pickupLunch :: (BotRequest r) => AuthenticatedActionHandler r
 pickupLunch accessToken _ _ = do
@@ -554,10 +554,10 @@ pickupLunch accessToken _ _ = do
       users <- MaybeT $ usersList accessToken
       MaybeT $ return <$> samples 2 users
     case users of
-      Nothing -> postToSlack "Problem talking to slack"
+      Nothing -> postResponse "Problem talking to slack"
       Just users' -> let list = intercalate " and " $ map slackUserName users'
                          x = mconcat ["How about? ", list]
-                     in postToSlack x
+                     in postResponse x
 
 timer :: (BotRequest r) => UnauthenticatedActionHandler r
 timer [time] _ = do
@@ -565,20 +565,20 @@ timer [time] _ = do
       t :: Maybe Int
       t = readMaybe time
     case t of
-      Nothing -> postToSlack "Couldn't parse time"
+      Nothing -> postResponse "Couldn't parse time"
       Just t' -> do
-        _ <- postToSlack "Starting timer!"
+        _ <- postResponse "Starting timer!"
         insertIO $ threadDelay $ t' * 60 * 1000000
-        postToSlack "Times up!"
-timer _ _ = postToSlack "Couldn't parse time"
+        postResponse "Times up!"
+timer _ _ = postResponse "Couldn't parse time"
 
 flipCoin :: (BotRequest r) => UnauthenticatedActionHandler r
 flipCoin _ _ = do
     result <- fromJust <$> liftIO (sample ["heads", "tails"])
-    postToSlack $ "Its " ++ result ++ "!"
+    postResponse $ "Its " ++ result ++ "!"
 
 help :: forall r . (BotRequest r) => UnauthenticatedActionHandler r
-help _ _ = postToSlack $ mconcat doc
+help _ _ = postResponse $ mconcat doc
   where
     categories :: [String]
     categories = map categoryParagraph $ groupBy category actions
@@ -596,10 +596,10 @@ help _ _ = postToSlack $ mconcat doc
 
 randomJoke' :: (BotRequest r) => UnauthenticatedActionHandler r
 randomJoke' x y =
-    postToSlack "Okay here is another..." >> randomJoke x y
+    postResponse "Okay here is another..." >> randomJoke x y
 
 randomJoke :: (BotRequest r) => UnauthenticatedActionHandler r
-randomJoke _ _ = liftIO (sample jokes) >>= postToSlack . fromJust
+randomJoke _ _ = liftIO (sample jokes) >>= postResponse . fromJust
   where
     jokes = [ "What is mario's favorite type of pants? Denim denim denim."
             , "What did the Buddhist say to the hot dog vendor? Make me one with everything."
@@ -638,7 +638,7 @@ authenticateAction _ req = do
       username = requestUsername req
       authUrl = appRoot ++ slackAuth ++ T.unpack (toQueryParams params)
     liftIO $ postResponseToSlack (SlackResponseUsername username) $ T.pack authUrl
-    postToSlack "Check your private messages"
+    postResponse "Check your private messages"
 
 -- ---- Helpers
 

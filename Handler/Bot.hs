@@ -3,9 +3,9 @@ module Handler.Bot where
 import Import
 import SlackTypes
 import Control.Monad.Trans.Maybe
-import qualified SlackHelpers as SH
+import SlackHelpers
 import qualified Data.Set as Set
-import qualified BotAction as BA
+import qualified BotAction as B
 import Data.Maybe (fromJust)
 import qualified Data.Text as T
 import SlackAPI
@@ -24,10 +24,10 @@ postBotR = do
         return "Something went wrong, check logs"
       Right req -> do
         accessToken <- getAccessTokenForUserWithSlackId $ slackRequestUserId req
-        x <- liftIO $ SH.findMatchAndProcessRequest accessToken req
-        case x of
-          Right fs -> do
-            singleResponse <- liftIO $ postResponses fs req
+        responses <- liftIO $ responsesForRequest accessToken req
+        case responses of
+          Right rs -> do
+            singleResponse <- liftIO $ postResponses rs req
             case singleResponse of
               Nothing -> return $ toJSON ([] :: [String])
               Just response -> respondWith response
@@ -48,12 +48,12 @@ findUserWithFilters filters = (fmap . fmap) entityVal (runDB $ selectFirst filte
 respondWith :: (Monad m, ConvertibleStrings a Text) => a -> m Value
 respondWith = return . toJSON . OutgoingWebhookResponse . cs
 
-postResponses :: (BotRequest r) => [BA.SlackResponseRunner] -> r -> IO (Maybe String)
-postResponses fs req = case fs of
-                         [f] -> liftM Just (f return)
-                         _ -> do
-                           evalAll (\x -> postResponseToRequest req x >> return "") fs
-                           return Nothing
+postResponses :: (BotRequest r) => [B.ResponseRunner] -> r -> IO (Maybe String)
+postResponses responses req = case responses of
+                                [response] -> liftM Just (response return)
+                                _ -> do
+                                  evalAll (\x -> postResponseToRequest req x >> return "") responses
+                                  return Nothing
 
 postResponseToRequest :: (BotRequest r) => r -> String -> IO ()
 postResponseToRequest req txt = void $ postResponseToSlack (destinationForRequest req) $ T.pack txt

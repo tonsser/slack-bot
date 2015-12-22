@@ -1,16 +1,16 @@
-module SlackHelpers where
+module SlackHelpers (responsesForRequest) where
 
 import Import hiding (group)
 import SlackTypes
 import qualified Data.Text as T
 import qualified Text.Regex as R
-import qualified BotAction as BA
+import qualified BotAction as B
 import qualified Data.List.Utils as L
 import Control.Monad.Trans.State (execStateT)
 
-findMatchAndProcessRequest :: (BotRequest r) => Maybe Text -> r -> IO (Either String [BA.SlackResponseRunner])
-findMatchAndProcessRequest accessToken req =
-    case matchingAction (commandForRequest req) BA.actions of
+responsesForRequest :: (BotRequest r) => Maybe Text -> r -> IO (Either String [B.ResponseRunner])
+responsesForRequest accessToken req =
+    case matchingAction (commandForRequest req) B.actions of
       Nothing -> return $ Left "Sorry but I don't understand that. Type \"bot help\" to get a list of things I understand."
       Just (matches, action) -> processRequest matches action accessToken req
 
@@ -37,12 +37,12 @@ textWithoutTriggerWord req = T.pack $ R.subRegex pat (T.unpack $ requestText req
     triggerWord = T.unpack $ requestTriggerWord req
     pat = R.mkRegex $ "^" ++ triggerWord ++ " "
 
-matchingAction :: BotRequest r => String -> [BA.BotAction r] -> Maybe ([String], BA.BotAction r)
+matchingAction :: BotRequest r => String -> [B.BotAction r] -> Maybe ([String], B.BotAction r)
 matchingAction t as = helper t as
   where
-    helper :: BotRequest r => String -> [BA.BotAction r] -> Maybe ([String], BA.BotAction r)
+    helper :: BotRequest r => String -> [B.BotAction r] -> Maybe ([String], B.BotAction r)
     helper _ [] = Nothing
-    helper text (action : rest) = case matchActionText t (BA.command action) of
+    helper text (action : rest) = case matchActionText t (B.command action) of
                                          Nothing -> helper text rest
                                          Just matches -> Just (matches, action)
 
@@ -55,15 +55,15 @@ actionCommandToRegex str = R.subRegex (R.mkRegex "\\{[^}]+\\}") str "(.+)"
 
 -- | Run action and post response into Slack
 
-processRequest :: (BotRequest r) => [String] -> BA.BotAction r -> Maybe Text -> r -> IO (Either String [BA.SlackResponseRunner])
+processRequest :: (BotRequest r) => [String] -> B.BotAction r -> Maybe Text -> r -> IO (Either String [B.ResponseRunner])
 processRequest matches action accessToken req =
-    if userOfRequestInGroup req (BA.accessGroup action)
-      then processPossiblyAuthenticatedAction (BA.actionHandler action) req accessToken matches
+    if userOfRequestInGroup req (B.accessGroup action)
+      then processPossiblyAuthenticatedAction (B.actionHandler action) req accessToken matches
       else return $ Left "Sorry but you don't have permission to do that"
 
-userOfRequestInGroup :: (BotRequest r) => r -> BA.AccessGroup -> Bool
-userOfRequestInGroup _ (BA.Everyone) = True
-userOfRequestInGroup req (BA.Developers) =
+userOfRequestInGroup :: (BotRequest r) => r -> B.AccessGroup -> Bool
+userOfRequestInGroup _ (B.Everyone) = True
+userOfRequestInGroup req (B.Developers) =
     contains (requestUsername req) [ "davidpdrsn"
                                    , "planck"
                                    , "karlo"
@@ -72,16 +72,16 @@ userOfRequestInGroup req (BA.Developers) =
                                    ]
 
 processPossiblyAuthenticatedAction :: (BotRequest r)
-                                   => BA.ActionHandler r
+                                   => B.ActionHandler r
                                    -> r
                                    -> Maybe Text
                                    -> [String]
-                                   -> IO (Either String [BA.SlackResponseRunner])
-processPossiblyAuthenticatedAction (BA.Unauthenticated action) req _ matches =
+                                   -> IO (Either String [B.ResponseRunner])
+processPossiblyAuthenticatedAction (B.Unauthenticated action) req _ matches =
     Right <$> execStateT (action matches req) []
-processPossiblyAuthenticatedAction (BA.Authenticated _) _ Nothing _ =
+processPossiblyAuthenticatedAction (B.Authenticated _) _ Nothing _ =
     return $ Left "Authenticate required, type: \"bot authenticate\""
-processPossiblyAuthenticatedAction (BA.Authenticated action) req (Just token) matches =
+processPossiblyAuthenticatedAction (B.Authenticated action) req (Just token) matches =
     Right <$> execStateT (action token matches req) []
 
 -- | Helper functions
