@@ -34,16 +34,40 @@ instance ToJSON SlackResponse where
              , "unfurl_links" .= True
              ]
 
+class BotRequest a where
+  requestChannelId   :: a -> Text
+  requestChannelName :: a -> Text
+  requestTeamDomain  :: a -> Text
+  requestTeamId      :: a -> Text
+  requestText        :: a -> Text
+  requestTimestamp   :: a -> Text
+  requestToken       :: a -> Text
+  requestTriggerWord :: a -> Text
+  requestUserId      :: a -> Text
+  requestUsername    :: a -> Text
+
+instance BotRequest SlackRequest where
+  requestChannelId   = slackRequestChannelId
+  requestChannelName = slackRequestChannelName
+  requestTeamDomain  = slackRequestTeamDomain
+  requestTeamId      = slackRequestTeamId
+  requestText        = slackRequestText
+  requestTimestamp   = slackRequestTimestamp
+  requestToken       = slackRequestToken
+  requestTriggerWord = slackRequestTriggerWord
+  requestUserId      = slackRequestUserId
+  requestUsername    = slackRequestUsername
+
 data SlackRequest = SlackRequest
-                  { slackRequestToken :: Text
-                  , slackRequestTeamId :: Text
-                  , slackRequestTeamDomain :: Text
-                  , slackRequestChannelId :: Text
+                  { slackRequestToken       :: Text
+                  , slackRequestTeamId      :: Text
+                  , slackRequestTeamDomain  :: Text
+                  , slackRequestChannelId   :: Text
                   , slackRequestChannelName :: Text
-                  , slackRequestTimestamp :: Text
-                  , slackRequestUserId :: Text
-                  , slackRequestUsername :: Text
-                  , slackRequestText :: Text
+                  , slackRequestTimestamp   :: Text
+                  , slackRequestUserId      :: Text
+                  , slackRequestUsername    :: Text
+                  , slackRequestText        :: Text
                   , slackRequestTriggerWord :: Text
                   }
 

@@ -67,8 +67,8 @@ postBotR = do
         accessToken <- getAccessTokenForUserWithSlackId $ slackRequestUserId req
         x <- liftIO $ SH.findMatchAndProcessRequest accessToken req
         case x of
-          Left () -> return $ toJSON ([] :: [String])
-          Right str -> return $ toJSON $ OutgoingWebhookResponse $ cs str
+          Right () -> return $ toJSON ([] :: [String])
+          Left err -> return $ toJSON $ OutgoingWebhookResponse $ cs err
 
 getAccessTokenForUserWithSlackId :: Text -> Handler (Maybe Text)
 getAccessTokenForUserWithSlackId slackUserId = runMaybeT $ do
