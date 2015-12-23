@@ -6,7 +6,7 @@ import LocalRequests
 
 getLocalBotR :: Handler Html
 getLocalBotR = defaultLayout $ do
-  addScriptRemote "http://ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"
+  addScriptRemote "https://ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"
   $(widgetFile "local-bot")
 
 postLocalBotR :: Handler String
