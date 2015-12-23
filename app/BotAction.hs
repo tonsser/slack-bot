@@ -267,7 +267,7 @@ actions = [ BotAction { command = "authenticate"
                       , accessGroup = Everyone
                       }
           , BotAction { command = "what do you think about siri"
-                      , actionHandler = Unauthenticated thoughtsOnSiri
+                      , actionHandler = Unauthenticated (quickResponse "No comments...")
                       , category = CategoryInformation
                       , accessGroup = Everyone
                       }
@@ -282,6 +282,9 @@ actions = [ BotAction { command = "authenticate"
                       , accessGroup = Everyone
                       }
           ]
+
+quickResponse :: BotRequest r => String -> UnauthenticatedActionHandler r
+quickResponse str _ _ = postResponse str
 
 graphMe :: (BotRequest r) => UnauthenticatedActionHandler r
 graphMe [query, startDate, endDate] _ = do
@@ -299,9 +302,6 @@ graphMe _ _ = postResponse "Couldn't parse arguments"
 goodMorning :: (BotRequest r) => UnauthenticatedActionHandler r
 goodMorning _ req = postResponse $ "Good morning, " ++ cs username
   where username = requestUsername req
-
-thoughtsOnSiri :: (BotRequest r) => UnauthenticatedActionHandler r
-thoughtsOnSiri _ _ = postResponse "No comments..."
 
 howSmart :: forall r . (BotRequest r) => UnauthenticatedActionHandler r
 howSmart _ _ = postResponse sentence
