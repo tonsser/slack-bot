@@ -24,9 +24,11 @@ library
                      Handler.Bot
                      Handler.SlackAuth
                      Handler.SlackAuthCallback
+                     Handler.LocalBot
                      SlackTypes
                      BotAction
-                     SlackHelpers
+                     BotResponder
+                     LocalRequests
                      SlackAPI
                      EnvHelpers
                      UrlHelpers
@@ -153,8 +155,9 @@ test-suite test
 
     other-modules:
                 Handler.CommonSpec
+                Handler.LocalBot
                 SlackAPISpec
-                SlackHelpersSpec
+                BotResponderSpec
                 TestImport
 
     build-depends: base

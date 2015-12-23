@@ -1,0 +1,20 @@
+(function() {
+
+  $(document).on("submit", "form.local-testing", function(e) {
+    e.preventDefault();
+
+    var value = $("input.query").val();
+
+    $.ajax({
+      type: "POST",
+      url: "/local",
+      data: { text: "bot " + value }
+    }).done(function(data) {
+      $(".responses").prepend("<div><pre>" + data + "</pre></div>");
+    }).error(function() {
+      $(".responses").prepend("<div><pre>Error, check console</pre></div>");
+    });
+
+  });
+
+})();

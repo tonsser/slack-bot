@@ -1,4 +1,4 @@
-module SlackHelpers (responsesForRequest) where
+module BotResponder (responsesForRequest) where
 
 import Import hiding (group)
 import SlackTypes
@@ -53,7 +53,7 @@ matchActionText text pat = R.matchRegex regex text
 actionCommandToRegex :: String -> String
 actionCommandToRegex str = R.subRegex (R.mkRegex "\\{[^}]+\\}") str "(.+)"
 
--- | Run action and post response into Slack
+-- | Run action and return responses
 
 processRequest :: (BotRequest r) => [String] -> B.BotAction r -> Maybe Text -> r -> IO (Either String [B.ResponseRunner])
 processRequest matches action accessToken req =

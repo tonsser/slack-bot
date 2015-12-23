@@ -6,3 +6,4 @@
 / BotR GET POST
 /slack/auth SlackAuthR GET
 /slack/auth/callback SlackAuthCallbackR GET
+/local LocalBotR GET POST

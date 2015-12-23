@@ -3,12 +3,13 @@ module Handler.Bot where
 import Import
 import SlackTypes
 import Control.Monad.Trans.Maybe
-import SlackHelpers
+import BotResponder
 import qualified Data.Set as Set
 import qualified BotAction as B
 import Data.Maybe (fromJust)
 import qualified Data.Text as T
 import SlackAPI
+import LocalRequests
 
 getBotR :: Handler Html
 getBotR = defaultLayout $ $(widgetFile "homepage")
@@ -77,14 +78,7 @@ buildSlackRequestFromParams = do
                        , "user_id" , "user_name" , "text" , "trigger_word"
                        ]
 
-      justIfKeyExists :: (MonadHandler m) => Text -> m (Maybe Text)
-      justIfKeyExists key = do
-        value <- lookupPostParam key
-        case value of
-          Nothing -> return Nothing
-          Just _ -> return $ Just key
-
-    presentParams <- catMaybes <$> mapM justIfKeyExists requiredParams
+    presentParams <- catMaybes <$> mapM lookupPostParam requiredParams
     if length presentParams == length requiredParams
       then liftM Right unsafeBuildRequest
       else return $ Left $ listDiff requiredParams presentParams

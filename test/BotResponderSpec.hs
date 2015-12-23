@@ -1,8 +1,8 @@
-module SlackHelpersSpec (spec) where
+module BotResponderSpec (spec) where
 
 import TestImport
 import qualified BotAction as BA
-import qualified SlackHelpers as SH
+import qualified BotResponder as SH
 import SlackTypes
 import qualified Text.Regex as R
 

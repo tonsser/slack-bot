@@ -1,0 +1,12 @@
+<div .container>
+  <h1>Local testing
+
+  <form .local-testing>
+    <div .form-group>
+        <div .row>
+          <div .col-md-6>
+            <input .query.form-control placeholder="Text, without 'bot' prefix">
+          <div .col-md-6>
+            <button .btn.btn-primary type="submit">Send
+
+  <div .responses>
