@@ -4,6 +4,10 @@
     e.preventDefault();
 
     var value = $("input.query").val();
+    var form = $(this);
+
+    form.find("button").attr("disabled", "true");
+    form.find("input").attr("disabled", "true");
 
     $.ajax({
       type: "POST",
@@ -13,6 +17,9 @@
       $(".responses").prepend("<div><pre>" + data + "</pre></div>");
     }).error(function() {
       $(".responses").prepend("<div><pre>Error, check console</pre></div>");
+    }).always(function() {
+      form.find("input").removeAttr("disabled");
+      form.find("button").removeAttr("disabled");
     });
 
   });
