@@ -9,30 +9,48 @@ import qualified BotAction as B
 import Data.Maybe (fromJust)
 import qualified Data.Text as T
 import SlackAPI
-import LocalRequests
+import EnvHelpers
 
 getBotR :: Handler Html
 getBotR = defaultLayout $ $(widgetFile "homepage")
 
 postBotR :: Handler Value
 postBotR = do
-    reqOrErr <- buildSlackRequestFromParams
-    case reqOrErr of
-      Left missing -> do
-        putStrLn $ mconcat [ "Missing params: "
-                           , T.intercalate ", " missing
-                           ]
-        return "Something went wrong, check logs"
-      Right req -> do
-        accessToken <- getAccessTokenForUserWithSlackId $ slackRequestUserId req
-        responses <- liftIO $ responsesForRequest accessToken req
-        case responses of
-          Right rs -> do
-            singleResponse <- liftIO $ postResponses rs req
-            case singleResponse of
-              Nothing -> return $ toJSON ([] :: [String])
-              Just response -> respondWith response
-          Left err -> respondWith err
+    tokenError <- verifyToken
+    case tokenError of
+      Just e -> return e
+      Nothing -> do
+        reqOrErr <- buildSlackRequestFromParams
+        case reqOrErr of
+          Left missing -> do
+            putStrLn $ mconcat [ "Missing params: "
+                               , T.intercalate ", " missing
+                               ]
+            return "Something went wrong, check logs"
+          Right req -> do
+            accessToken <- getAccessTokenForUserWithSlackId $ slackRequestUserId req
+            responses <- liftIO $ responsesForRequest accessToken req
+            case responses of
+              Right rs -> do
+                singleResponse <- liftIO $ postResponses rs req
+                case singleResponse of
+                  Nothing -> return $ toJSON ([] :: [String])
+                  Just response -> respondWith response
+              Left err -> respondWith err
+
+verifyToken :: Handler (Maybe Value)
+verifyToken = do
+    requiredToken <- liftIO getVerificationToken
+    t <- lookupPostParam "token"
+    case t of
+      Nothing -> return $ Just $ toJSON $ OutgoingWebhookResponse "Missing verification token param"
+      Just actualToken ->
+        if requiredToken == actualToken
+          then return Nothing
+          else return $ Just $ toJSON $ OutgoingWebhookResponse "Verification token mismatch"
+
+getVerificationToken :: IO Text
+getVerificationToken = cs <$> lookupEnvironmentVariable "TONSS_SLACK_VERIFICATION_TOKEN"
 
 -- | Finding acces token
 

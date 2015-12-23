@@ -1,6 +1,18 @@
 <div .container>
   <h1>Local testing
 
+  <div .row .auth>
+    <div .col-md-6>
+      <div .row>
+        <div .col-md-6>
+          <label>Username:
+          <input .form-control name="username">
+        <div .col-md-6>
+          <label>Password:
+          <input .form-control name="password">
+
+  <hr>
+
   <form .local-testing>
     <div .form-group>
         <div .row>

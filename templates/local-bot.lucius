@@ -1,3 +1,4 @@
-.local-testing {
-  margin-bottom: 1rem
+.local-testing,
+.auth {
+  margin-bottom: 2rem
 }

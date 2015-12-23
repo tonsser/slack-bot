@@ -9,6 +9,7 @@ import Import
 import SlackTypes
 import BotResponder
 import qualified BotAction as B
+import Handler.Bot (getVerificationToken)
 
 runResponsesLocally :: BotRequest r => r -> IO [String]
 runResponsesLocally req = do
@@ -17,7 +18,7 @@ runResponsesLocally req = do
     Right rs -> do
       var <- newIORef []
       gatherResponses rs var
-    Left err -> return $ [err]
+    Left err -> return [err]
 
 data LocalRequest = LocalRequest
                   { localRequestToken       :: Text
@@ -33,18 +34,17 @@ data LocalRequest = LocalRequest
                   }
 
 makeLocalRequest :: LocalRequest
-makeLocalRequest = LocalRequest
-                 { localRequestToken       = "xxx"
-                 , localRequestTeamId      = "T0001"
-                 , localRequestTeamDomain  = "example"
-                 , localRequestChannelId   = "C2147483705"
-                 , localRequestChannelName = "test"
-                 , localRequestTimestamp   = "123"
-                 , localRequestUserId      = "U2147483697"
-                 , localRequestUsername    = "hest"
-                 , localRequestText        = "bot help"
-                 , localRequestTriggerWord = "bot"
-                 }
+makeLocalRequest = LocalRequest { localRequestToken       = "x"
+                                , localRequestTeamId      = "T0001"
+                                , localRequestTeamDomain  = "example"
+                                , localRequestChannelId   = "C2147483705"
+                                , localRequestChannelName = "test"
+                                , localRequestTimestamp   = "123"
+                                , localRequestUserId      = "U2147483697"
+                                , localRequestUsername    = "hest"
+                                , localRequestText        = "bot help"
+                                , localRequestTriggerWord = "bot"
+                                }
 
 instance BotRequest LocalRequest where
   requestChannelId   = localRequestChannelId

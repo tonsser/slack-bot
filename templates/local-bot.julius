@@ -1,5 +1,14 @@
 (function() {
 
+  var getUsernameAndPassword = (function() {
+    return function(callback) {
+      var username = $(".auth input[name=username]").val();
+      var password = $(".auth input[name=password]").val();
+
+      callback(username, password);
+    };
+  })();
+
   $(document).on("submit", "form.local-testing", function(e) {
     e.preventDefault();
 
@@ -9,17 +18,22 @@
     form.find("button").attr("disabled", "true");
     form.find("input").attr("disabled", "true");
 
-    $.ajax({
-      type: "POST",
-      url: "/local",
-      data: { text: "bot " + value }
-    }).done(function(data) {
-      $(".responses").prepend("<div><pre>" + data + "</pre></div>");
-    }).error(function() {
-      $(".responses").prepend("<div><pre>Error, check console</pre></div>");
-    }).always(function() {
-      form.find("input").removeAttr("disabled");
-      form.find("button").removeAttr("disabled");
+    getUsernameAndPassword(function(username, password) {
+      $.ajax({
+        type: "POST",
+        url: "/local",
+        data: { text: "bot " + value },
+        beforeSend: function (xhr) {
+          xhr.setRequestHeader("Authorization", "Basic " + btoa(username + ":" + password));
+        },
+      }).done(function(data) {
+        $(".responses").prepend("<div><pre>" + data + "</pre></div>");
+      }).error(function() {
+        $(".responses").prepend("<div><pre>Error, check console</pre></div>");
+      }).always(function() {
+        form.find("input").removeAttr("disabled");
+        form.find("button").removeAttr("disabled");
+      });
     });
 
   });
