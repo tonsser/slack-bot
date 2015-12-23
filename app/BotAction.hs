@@ -276,6 +276,11 @@ actions = [ BotAction { command = "authenticate"
                       , category = CategorySilly
                       , accessGroup = Everyone
                       }
+          , BotAction { command = "how was star wars"
+                      , actionHandler = Unauthenticated (quickResponse "I'm not telling!")
+                      , category = CategorySilly
+                      , accessGroup = Everyone
+                      }
           , BotAction { command = "graph me {DataDog query} from {natural language date} to {natural language date}"
                       , actionHandler = Unauthenticated graphMe
                       , category = CategoryApiUtility
