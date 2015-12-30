@@ -59,25 +59,13 @@ performRequest req = do
                                                   , requestBody = RequestBodyLBS $ cs $ fromMaybe "" $ reqDefBody req
                                                   }
 
--- TODO: Replace this with some monad transformer stack
-newtype JsonResponse a = JsonResponse { runJsonRequest :: IO (Either GenericException a) }
+type JsonResponse a = ExceptT GenericException IO a
 
-instance Functor JsonResponse where
-    fmap f (JsonResponse x) = JsonResponse $ (fmap . fmap) f x
-
-instance Applicative JsonResponse where
-    pure = JsonResponse . return . Right
-    (JsonResponse f) <*> (JsonResponse x) = JsonResponse $ liftA2 (<*>) f x
-
-instance Monad JsonResponse where
-    return = pure
-    (JsonResponse x) >>= f = JsonResponse $ do x' <- x
-                                               case x' of
-                                                 Right a -> runJsonRequest $ f a
-                                                 Left e -> return $ Left e
+runJsonRequest :: JsonResponse a -> IO (Either GenericException a)
+runJsonRequest = runExceptT
 
 fetchJson :: RequestDefinition -> JsonResponse Value
-fetchJson req = JsonResponse $ runExceptT $ do
+fetchJson req = do
     body <- ExceptT $ fmap responseBody <$> performRequest req
     ExceptT $ return $ case decode body of
       Nothing -> Left $ GenericException "Failed to parse json"
