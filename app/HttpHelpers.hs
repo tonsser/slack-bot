@@ -59,22 +59,15 @@ performRequest req = do
                                                   , requestBody = RequestBodyLBS $ cs $ fromMaybe "" $ reqDefBody req
                                                   }
 
+-- TODO: Replace this with some monad transformer stack
 newtype JsonResponse a = JsonResponse { runJsonRequest :: IO (Either GenericException a) }
 
 instance Functor JsonResponse where
-    fmap f res = JsonResponse $ do
-      res' <- runJsonRequest res
-      case res' of
-        Left e -> return $ Left e
-        Right x -> return $ Right $ f x
+    fmap f (JsonResponse x) = JsonResponse $ (fmap . fmap) f x
 
 instance Applicative JsonResponse where
     pure = JsonResponse . return . Right
-    f <*> x = JsonResponse $ do f' <- runJsonRequest f
-                                x' <- runJsonRequest x
-                                return $ do f'' <- f'
-                                            x'' <- x'
-                                            return $ f'' x''
+    (JsonResponse f) <*> (JsonResponse x) = JsonResponse $ liftA2 (<*>) f x
 
 instance Monad JsonResponse where
     return = pure
