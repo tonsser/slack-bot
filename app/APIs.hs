@@ -4,6 +4,7 @@ module APIs
     , xkcd
     , searchRubyGems
     , RubyGem(..)
+    , deleteJohnTonsser
     )
   where
 
@@ -16,6 +17,14 @@ import Control.Monad.Trans.Except
 import EnvHelpers
 import qualified Data.Vector as V
 import Data.Aeson
+
+deleteJohnTonsser :: IO (Either GenericException ())
+deleteJohnTonsser = do
+    let
+      req = mkReq { reqDefUrl = "https://tonsser-api-staging.herokuapp.com/develop/delete-john-tonsser"
+                  , reqDefMethod = Just "DELETE"
+                  }
+    void <$> performRequest req
 
 searchRubyGems :: String -> IO (Either GenericException [RubyGem])
 searchRubyGems query = do

@@ -286,7 +286,20 @@ actions = [ BotAction { command = "authenticate"
                       , category = CategoryApiUtility
                       , accessGroup = Everyone
                       }
+          , BotAction { command = "delete john tonsser"
+                      , actionHandler = Unauthenticated deleteJohnTonsserAction
+                      , category = CategoryApiUtility
+                      , accessGroup = Everyone
+                      }
           ]
+
+deleteJohnTonsserAction :: (BotRequest r) => UnauthenticatedActionHandler r
+deleteJohnTonsserAction _ _ = do
+    response <- liftIO deleteJohnTonsser
+    case response of
+      Right () -> postResponse "Deleted John Tonsser"
+      Left err -> do postResponse "There was an error, he might already be deleted"
+                     postResponse $ show err
 
 quickResponse :: BotRequest r => String -> UnauthenticatedActionHandler r
 quickResponse str _ _ = postResponse str
