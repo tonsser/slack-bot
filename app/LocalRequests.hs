@@ -20,6 +20,14 @@ runResponsesLocally req = do
       gatherResponses rs var
     Left err -> return [err]
 
+gatherResponses :: [B.ResponseRunner] -> IORef [String] -> IO [String]
+gatherResponses [] var = reverse <$> readIORef var
+gatherResponses (resp : rest) var = do
+    _ <- resp $ \x -> do contents <- readIORef var
+                         writeIORef var (x : contents)
+                         return x
+    gatherResponses rest var
+
 data LocalRequest = LocalRequest
                   { localRequestToken       :: Text
                   , localRequestTeamId      :: Text
@@ -57,12 +65,3 @@ instance BotRequest LocalRequest where
   requestTriggerWord = localRequestTriggerWord
   requestUserId      = localRequestUserId
   requestUsername    = localRequestUsername
-
-gatherResponses :: [B.ResponseRunner] -> IORef [String] -> IO [String]
-gatherResponses [] var = readIORef var
-gatherResponses (resp : rest) var = do
-    _ <- resp $ \x -> do contents <- readIORef var
-                         writeIORef var (x : contents)
-                         return x
-    gatherResponses rest var
-
