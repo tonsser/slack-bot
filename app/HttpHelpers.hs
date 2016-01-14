@@ -25,7 +25,10 @@ import Control.Monad.Trans.Except
 
 data GenericException = GenericException String
                       | WrappedHttpExcpetion HttpException
-                      deriving (Show)
+
+instance Show GenericException where
+    show (GenericException str) = str
+    show (WrappedHttpExcpetion e) = show e
 
 instance Exception GenericException
 
