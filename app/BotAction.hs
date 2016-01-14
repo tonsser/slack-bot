@@ -296,7 +296,19 @@ actions = [ BotAction { command = "authenticate"
                       , category = CategoryApiUtility
                       , accessGroup = Everyone
                       }
+          , BotAction { command = "whats for lunch"
+                      , actionHandler = Unauthenticated whatsForLunch
+                      , category = CategoryApiUtility
+                      , accessGroup = Everyone
+                      }
           ]
+
+whatsForLunch :: (BotRequest r) => UnauthenticatedActionHandler r
+whatsForLunch _ _ = do
+    menu <- liftIO todaysLunchMenu
+    case menu of
+      Left e -> postResponse $ show e
+      Right x -> postResponse x
 
 deleteJohnTonsserAction :: (BotRequest r) => UnauthenticatedActionHandler r
 deleteJohnTonsserAction _ _ = do

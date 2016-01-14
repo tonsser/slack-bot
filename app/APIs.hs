@@ -5,18 +5,72 @@ module APIs
     , searchRubyGems
     , RubyGem(..)
     , deleteJohnTonsser
+    , todaysLunchMenu
     )
   where
 
-import Import hiding (replace)
-import HttpHelpers
-import Data.Aeson.Lens
 import Control.Lens
-import Data.List.Utils
 import Control.Monad.Trans.Except
-import EnvHelpers
-import qualified Data.Vector as V
 import Data.Aeson
+import Data.Aeson.Lens
+import Data.Char (isAscii)
+import Data.List.Utils
+import EnvHelpers
+import Data.List.Split
+import HttpHelpers
+import Import hiding (replace)
+import Text.Regex
+import qualified Data.Vector as V
+
+todaysLunchMenu :: IO (Either GenericException String)
+todaysLunchMenu = do
+    let
+      req = mkReq { reqDefUrl = "http://e.frokost.dk/Menuplan/RssMenu.aspx"
+                  , reqDefQueryParams = Just [("l", "lqmqp2nbVs")]
+                  }
+
+      parseTitle :: String -> Maybe String
+      parseTitle xml = case matchRegex regex xml of
+                         Just [t] -> Just t
+                         _ -> Nothing
+        where regex = mkRegex "</author>.*<title>(.*)</title>"
+
+      parseDescription :: String -> Maybe String
+      parseDescription xml = case matchRegex regex xml of
+                               Just [t] -> Just t
+                               _ -> Nothing
+        where regex = mkRegex "</pubDate>.*<description>(.*)</description>"
+
+      -- TODO: Unescape HTML entities
+      unescape :: String -> String
+      unescape str = subRegex gtReg (subRegex ltReg str "<") ">"
+        where ltReg = mkRegex "&lt;"
+              gtReg = mkRegex "&gt;"
+
+      subBolds :: String -> String
+      subBolds str = subRegex reg str "*"
+        where reg = mkRegex "</?b>"
+
+      removeNewlines :: String -> String
+      removeNewlines = concat . splitOn "\n"
+
+      parseXML :: String -> Maybe String
+      parseXML str = do
+        title <- removeNewlines <$> parseTitle str
+        desc <- unescape . removeNewlines <$> parseDescription str
+        return $ formatMenu title desc
+
+      formatMenu :: String -> String -> String
+      formatMenu title desc = mconcat [ "*", title, "*", "\n", "\n"
+                                      , desc'
+                                      ]
+        where desc' = subBolds $ intercalate "\n" $ splitOn "<br/>" desc
+
+    xml <- fmap (parseXML . filter isAscii . cs . responseBody) <$> performRequest req
+    case xml of
+      Left e -> return $ Left e
+      Right Nothing -> return $ Left $ GenericException "Failed parsing RSS menu"
+      Right (Just x) -> return $ Right x
 
 deleteJohnTonsser :: IO (Either GenericException ())
 deleteJohnTonsser = do
