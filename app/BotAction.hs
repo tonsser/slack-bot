@@ -291,6 +291,11 @@ actions = [ BotAction { command = "authenticate"
                       , category = CategoryApiUtility
                       , accessGroup = Everyone
                       }
+          , BotAction { command = "kill john tonsser"
+                      , actionHandler = Unauthenticated deleteJohnTonsserAction
+                      , category = CategoryApiUtility
+                      , accessGroup = Everyone
+                      }
           ]
 
 deleteJohnTonsserAction :: (BotRequest r) => UnauthenticatedActionHandler r
