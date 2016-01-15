@@ -8,7 +8,7 @@ packages:
 - '.'
 - location:
     git: https://github.com/davidpdrsn/simple-date-parsing.git
-    commit: 5e8665834c19610d55703bf79a5b1a315a73ac1c
+    commit: ded7989cecc2612a4d0486587182883409885f0e
   extra-dep: true
 
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
