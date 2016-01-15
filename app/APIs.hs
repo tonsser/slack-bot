@@ -43,9 +43,9 @@ todaysLunchMenu = do
 
       -- TODO: Unescape HTML entities
       unescape :: String -> String
-      unescape str = subRegex gtReg (subRegex ltReg str "<") ">"
-        where ltReg = mkRegex "&lt;"
-              gtReg = mkRegex "&gt;"
+      unescape = (">" `sub` "&gt;" ) .
+                 ("<" `sub` "&lt;")
+        where sub s p i = subRegex (mkRegex p) i s
 
       subBolds :: String -> String
       subBolds str = subRegex reg str "*"

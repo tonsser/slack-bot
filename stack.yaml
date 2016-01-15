@@ -6,6 +6,10 @@ resolver: lts-4.0
 # Local packages, usually specified by relative directory name
 packages:
 - '.'
+- location:
+    git: https://github.com/davidpdrsn/simple-date-parsing.git
+    commit: 5e8665834c19610d55703bf79a5b1a315a73ac1c
+  extra-dep: true
 
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
 extra-deps: []

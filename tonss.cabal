@@ -60,6 +60,7 @@ library
                 GADTs
                 GeneralizedNewtypeDeriving
                 FlexibleContexts
+                DatatypeContexts
                 FlexibleInstances
                 EmptyDataDecls
                 NoMonomorphismRestriction
@@ -119,6 +120,7 @@ library
                  , string-conversions
                  , HTTP
                  , base64-bytestring
+                 , simple-date-parsing
 
 executable         tonss
     if flag(library-only)

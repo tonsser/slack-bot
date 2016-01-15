@@ -171,12 +171,12 @@ actions = [ BotAction { command = "authenticate"
                       , category = CategoryUtility
                       , accessGroup = Everyone
                       }
-          , BotAction { command = "api metrics from {natural language date} to {natural language date}"
+          , BotAction { command = "api metrics from {relative date like -1d} to {relative date like -2h}"
                       , actionHandler = Unauthenticated apiMetrics
                       , category = CategoryApiUtility
                       , accessGroup = Everyone
                       }
-          , BotAction { command = "api errors from {natural language date} to {natural language date}"
+          , BotAction { command = "api errors from {relative date like -3d} to {relative date like -15h}"
                       , actionHandler = Unauthenticated apiErrors
                       , category = CategoryApiUtility
                       , accessGroup = Everyone
@@ -281,7 +281,7 @@ actions = [ BotAction { command = "authenticate"
                       , category = CategorySilly
                       , accessGroup = Everyone
                       }
-          , BotAction { command = "graph me {DataDog query} from {natural language date} to {natural language date}"
+          , BotAction { command = "graph me {DataDog query} from {relative date} to {relative date}"
                       , actionHandler = Unauthenticated graphMe
                       , category = CategoryApiUtility
                       , accessGroup = Everyone
