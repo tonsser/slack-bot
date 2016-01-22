@@ -69,6 +69,7 @@ userOfRequestInGroup req (B.Developers) =
                                    , "karlo"
                                    , "tkrogsboll"
                                    , "jacobesp"
+                                   , "engberg"
                                    ]
 
 processPossiblyAuthenticatedAction :: (BotRequest r)
