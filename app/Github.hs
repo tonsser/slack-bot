@@ -2,6 +2,7 @@ module Github
     ( createIssue
     , issues
     , FeatureRequest(..)
+    , RepoName(..)
     , issueNumber
     , issueUrl
     , issueTitle
@@ -98,7 +99,15 @@ parseGithubIssues json = case decode json of
 data FeatureRequest = FeatureRequest
                  { title :: String
                  , username :: String
+                 , repoName :: RepoName
                  }
+
+data RepoName = SlackBotRepo
+              | ApiRepo
+
+instance Show RepoName where
+    show SlackBotRepo = "slack-bot"
+    show ApiRepo = "tonsser-api"
 
 instance ToJSON FeatureRequest where
     toJSON s = object [ "title" .= title s
@@ -110,7 +119,7 @@ createIssue issue = do
     accessToken <- cs <$> getAccessToken
     let req = mkReq { reqDefMethod = Just "POST"
                     , reqDefBody = Just $ cs $ encode issue
-                    , reqDefUrl = "https://api.github.com/repos/tonsser/tonss/issues"
+                    , reqDefUrl = "https://api.github.com/repos/tonsser/" ++ show (repoName issue) ++ "/issues"
                     , reqDefHeaders = Just [("User-Agent", "Tonsser-Slack-Bot")]
                     , reqDefQueryParams = Just [("access_token", accessToken)]
                     }

@@ -186,6 +186,11 @@ actions = [ BotAction { command = "authenticate"
                       , category = CategoryUtility
                       , accessGroup = Everyone
                       }
+          , BotAction { command = "api open issue {text}"
+                      , actionHandler = Unauthenticated createApiIssue
+                      , category = CategoryApiUtility
+                      , accessGroup = Developers
+                      }
           , BotAction { command = "ruby {ruby to evaluate}"
                       , actionHandler = Unauthenticated ruby
                       , category = CategoryUtility
@@ -475,10 +480,17 @@ ruby args _ = do
       Left e -> postResponse "There was an error..." >> postResponse (show e)
 
 requestFeature :: (BotRequest r) => UnauthenticatedActionHandler r
-requestFeature args req = do
+requestFeature = createIssue GH.SlackBotRepo
+
+createApiIssue :: (BotRequest r) => UnauthenticatedActionHandler r
+createApiIssue = createIssue GH.SlackBotRepo
+
+createIssue :: BotRequest r => GH.RepoName -> UnauthenticatedActionHandler r
+createIssue repo args req = do
     let pharse = intercalate "+" args
         issue = GH.FeatureRequest { title = pharse
                                   , username = T.unpack $ requestUsername req
+                                  , repoName = repo
                                   }
     response <- liftIO $ GH.createIssue issue
     case response of
