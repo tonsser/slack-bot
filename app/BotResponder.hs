@@ -47,8 +47,9 @@ matchingAction t as = helper t as
                                          Just matches -> Just (matches, action)
 
 matchActionText :: String -> String -> Maybe [String]
-matchActionText text pat = R.matchRegex regex text
+matchActionText text pat = R.matchRegex regex text'
   where regex = R.mkRegex $ "^" ++ actionCommandToRegex pat ++ "\\?*$"
+        text' = R.subRegex (R.mkRegex "'") text ""
 
 actionCommandToRegex :: String -> String
 actionCommandToRegex str = R.subRegex (R.mkRegex "\\{[^}]+\\}") str "(.+)"
