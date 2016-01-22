@@ -483,7 +483,7 @@ requestFeature :: (BotRequest r) => UnauthenticatedActionHandler r
 requestFeature = createIssue GH.SlackBotRepo
 
 createApiIssue :: (BotRequest r) => UnauthenticatedActionHandler r
-createApiIssue = createIssue GH.SlackBotRepo
+createApiIssue = createIssue GH.ApiRepo
 
 createIssue :: BotRequest r => GH.RepoName -> UnauthenticatedActionHandler r
 createIssue repo args req = do
