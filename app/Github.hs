@@ -11,15 +11,17 @@ module Github
     )
   where
 
-import Import hiding (httpLbs, newManager)
-import EnvHelpers
-import Network.URI.Encode (encodeTextToBS)
-import Data.CaseInsensitive
-import HttpHelpers
+import Control.Lens ((^?))
+import Control.Monad.Trans.Except
 import Data.Aeson hiding (json)
+import Data.Aeson.Lens
+import Data.CaseInsensitive
+import EnvHelpers
+import HttpHelpers
+import Import hiding (httpLbs, newManager)
+import Network.URI.Encode (encodeTextToBS)
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Text as T
-import Control.Monad.Trans.Except
 
 data GithubIssue = GithubIssue
                  { issueNumber :: Int
@@ -103,18 +105,20 @@ instance ToJSON FeatureRequest where
                       , "body" .= ("Requested by " ++ username s)
                       ]
 
-createIssue :: FeatureRequest -> IO (Either GenericException ())
+createIssue :: FeatureRequest -> IO (Either GenericException GithubIssue)
 createIssue issue = do
-    accessToken <- encodeTextToBS <$> getAccessToken
-    let url = "https://api.github.com/repos/tonsser/tonss/issues"
-        params = [ ("access_token", Just accessToken) ]
-        body = encode issue
-    initReq <- parseUrl url
-    let req = setQueryString params $ initReq { method = "POST"
-                                              , requestBody = RequestBodyLBS body
-                                              , requestHeaders = [("User-Agent" :: CI ByteString, "Tonsser-Slack-Bot")]
-                                              }
-    void <$> safeHttpLbs req
+    accessToken <- cs <$> getAccessToken
+    let req = mkReq { reqDefMethod = Just "POST"
+                    , reqDefBody = Just $ cs $ encode issue
+                    , reqDefUrl = "https://api.github.com/repos/tonsser/tonss/issues"
+                    , reqDefHeaders = Just [("User-Agent", "Tonsser-Slack-Bot")]
+                    , reqDefQueryParams = Just [("access_token", accessToken)]
+                    }
+    result <- runJsonRequest $ fromJSON <$> fetchJson req
+    case result of
+      Left e -> return $ Left e
+      Right (Error e) -> return $ Left $ GenericException e
+      Right (Success x) -> return $ Right x
 
 getAccessToken :: IO Text
 getAccessToken = cs <$> lookupEnvironmentVariable "TONSS_GITHUB_ACCESS_TOKEN"

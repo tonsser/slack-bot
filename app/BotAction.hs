@@ -482,7 +482,8 @@ requestFeature args req = do
                                   }
     response <- liftIO $ GH.createIssue issue
     case response of
-      Right () -> postResponse "Noted!"
+      Right result -> do postResponse "Noted!"
+                         postResponse $ GH.issueUrl result
       Left e -> postResponse "There was an error..." >> postResponse (show e)
 
 apiErrors :: (BotRequest r) => UnauthenticatedActionHandler r
