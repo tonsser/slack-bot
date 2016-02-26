@@ -41,6 +41,7 @@ import qualified Data.ByteString.Base64 as B64
 import Control.Monad.Trans.State
 import qualified DataDog as Dog
 import HttpHelpers (GenericException)
+import qualified Data.HashMap.Strict as HM
 
 type CommandMatches = [String]
 type AccessToken = Text
@@ -306,7 +307,21 @@ actions = [ BotAction { command = "authenticate"
                       , category = CategoryApiUtility
                       , accessGroup = Everyone
                       }
+          , BotAction { command = "how much swift is ios"
+                      , actionHandler = Unauthenticated howMuchSwift
+                      , category = CategoryInformation
+                      , accessGroup = Everyone
+                      }
           ]
+
+howMuchSwift :: (BotRequest r) => UnauthenticatedActionHandler r
+howMuchSwift _ _ = do
+    breakdown <- liftIO $ GH.languageBreakdown "tonsser-ios"
+    case breakdown of
+      Left e -> postResponse $ show e
+      Right x -> case HM.lookup "Swift" (GH.languagePercentages x) of
+                   Just p -> postResponse $ "iOS is currently " ++ show p ++ "% swift"
+                   Nothing -> postResponse "No swift found :("
 
 whatsForLunch :: (BotRequest r) => UnauthenticatedActionHandler r
 whatsForLunch _ _ = do

@@ -9,6 +9,8 @@ module Github
     , issueBody
     , closeIssue
     , commentOnIssue
+    , languageBreakdown
+    , languagePercentages
     )
   where
 
@@ -16,11 +18,12 @@ import Control.Lens ((^?))
 import Control.Monad.Trans.Except
 import Data.Aeson hiding (json)
 import Data.Aeson.Lens
-import Data.CaseInsensitive
+import Data.CaseInsensitive hiding (map)
 import EnvHelpers
 import HttpHelpers
 import Import hiding (httpLbs, newManager)
 import Network.URI.Encode (encodeTextToBS)
+import qualified Data.HashMap.Strict as HM
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Text as T
 
@@ -51,6 +54,43 @@ issues repo = do
                                               }
     body <- fmap responseBody <$> safeHttpLbs req
     return $ body >>= parseGithubIssues
+
+languageBreakdown :: String -> IO (Either GenericException (HashMap String Integer))
+languageBreakdown repo = do
+    accessToken <- cs <$> getAccessToken
+    let req = mkReq { reqDefMethod = Just "GET"
+                    , reqDefUrl = "https://api.github.com/repos/tonsser/" ++ repo ++ "/languages"
+                    , reqDefHeaders = Just [("User-Agent", "Tonsser-Slack-Bot")]
+                    , reqDefQueryParams = Just [("access_token", accessToken)]
+                    }
+    result <- runJsonRequest $ parseLanguageBreakdown <$> fetchJson req
+    case result of
+      Left e -> return $ Left e
+      Right Nothing -> return $ Left $ GenericException "There was an error (parsing json)"
+      Right (Just x) -> return $ Right $ HM.fromList x
+
+languagePercentages :: HashMap String Integer -> HashMap String Float
+languagePercentages m = HM.map ((roundToDecimals 2) . (* 100) . percentage) m
+  where
+    percentage :: Integer -> Float
+    percentage bytesInLanguage = fromIntegral bytesInLanguage / fromIntegral total
+
+    total :: Integer
+    total = sum $ map snd $ HM.toList m
+
+roundToDecimals n f = (fromInteger $ round $ f * (10^n)) / (10.0^^n)
+
+parseLanguageBreakdown :: Value -> Maybe [(String, Integer)]
+parseLanguageBreakdown (Object o) = parseMap $ HM.toList o
+  where
+    parseMap :: [(Text, Value)] -> Maybe [(String, Integer)]
+    parseMap = mapM parsePair
+
+    parsePair :: (Text, Value) -> Maybe (String, Integer)
+    parsePair (k, v) = case fromJSON v of
+                         Error _ -> Nothing
+                         Success i -> Just (cs k, i)
+parseLanguageBreakdown _ = Nothing
 
 closeIssue :: String -> Int -> String -> IO (Either GenericException ())
 closeIssue repo number username = runExceptT $ do
