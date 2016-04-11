@@ -320,7 +320,7 @@ howMuchSwift _ _ = do
     case breakdown of
       Left e -> postResponse $ show e
       Right x -> case HM.lookup "Swift" (GH.languagePercentages x) of
-                   Just p -> postResponse $ "iOS is currently " ++ show p ++ "% swift"
+                   Just p -> postResponse $ "iOS is currently " ++ show p ++ "% :swift:"
                    Nothing -> postResponse "No swift found :("
 
 whatsForLunch :: (BotRequest r) => UnauthenticatedActionHandler r
