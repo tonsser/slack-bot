@@ -5,6 +5,7 @@ module APIs
     , searchRubyGems
     , RubyGem(..)
     , deleteJohnTonsser
+    , deleteFissirul
     , todaysLunchMenu
     )
   where
@@ -73,6 +74,14 @@ todaysLunchMenu = do
       Left e -> return $ Left e
       Right Nothing -> return $ Left $ GenericException "Failed parsing RSS menu"
       Right (Just x) -> return $ Right x
+
+deleteFissirul :: IO (Either GenericException ())
+deleteFissirul = do
+    let
+      req = mkReq { reqDefUrl = "https://tonsser-api-staging.herokuapp.com/develop/delete-fissi-rul"
+                  , reqDefMethod = Just "DELETE"
+                  }
+    void <$> performRequest req
 
 deleteJohnTonsser :: IO (Either GenericException ())
 deleteJohnTonsser = do

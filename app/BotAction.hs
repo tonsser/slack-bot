@@ -302,6 +302,11 @@ actions = [ BotAction { command = "authenticate"
                       , category = CategoryApiUtility
                       , accessGroup = Everyone
                       }
+          , BotAction { command = "kill fissirul lohmann"
+                      , actionHandler = Unauthenticated deleteFissirulAction
+                      , category = CategoryApiUtility
+                      , accessGroup = Everyone
+                      }
           , BotAction { command = "whats for lunch"
                       , actionHandler = Unauthenticated whatsForLunch
                       , category = CategoryApiUtility
@@ -329,6 +334,14 @@ whatsForLunch _ _ = do
     case menu of
       Left e -> postResponse $ show e
       Right x -> postResponse x
+
+deleteFissirulAction :: (BotRequest r) => UnauthenticatedActionHandler r
+deleteFissirulAction _ _ = do
+    response <- liftIO deleteFissirul
+    case response of
+      Right () -> postResponse "Deleted Fissirul"
+      Left err -> do postResponse "There was an error, he might already be deleted"
+                     postResponse $ show err
 
 deleteJohnTonsserAction :: (BotRequest r) => UnauthenticatedActionHandler r
 deleteJohnTonsserAction _ _ = do
