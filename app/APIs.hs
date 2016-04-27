@@ -78,7 +78,7 @@ todaysLunchMenu = do
 deleteFissirul :: IO (Either GenericException ())
 deleteFissirul = do
     let
-      req = mkReq { reqDefUrl = "https://tonsser-api-staging.herokuapp.com/develop/delete-fissi-rul"
+      req = mkReq { reqDefUrl = "https://tonsser-api-staging.herokuapp.com/develop/delete-fissirul"
                   , reqDefMethod = Just "DELETE"
                   }
     void <$> performRequest req
