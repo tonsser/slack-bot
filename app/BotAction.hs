@@ -328,36 +328,24 @@ actions = [ BotAction { command = "authenticate"
 pullRequests :: (BotRequest r) => UnauthenticatedActionHandler r
 pullRequests [repoName] _ = do
     postResponse "Checking, please wait"
-    issues' <- liftIO $ runExceptT $ do issues <- ExceptT $ GH.issues repoName
-                                        -- TODO: Fetch comments in parallel
-                                        comments <- mapM (ExceptT . GH.issueComments) issues
-                                        return $ zip issues comments
+    issues' <- liftIO $ runExceptT $ ExceptT $ GH.issues repoName
     case issues' of
       Left e -> postResponse $ show e
-      Right issuesAndComments -> do
+      Right issues -> do
         let pullRequests =
-              filter (\(i, _pr, _comments) -> let labelNames = map GH.labelName $ GH.issueLabels i
-                            in elem "Status: Review needed" labelNames) $
-              foldr (\(issue, comments) acc -> case GH.issuePullRequest issue of
-                                                 Nothing -> acc
-                                                 Just pr -> (issue, pr, comments) : acc) [] issuesAndComments
+              filter (\(i, _pr) -> let labelNames = map GH.labelName $ GH.issueLabels i
+                                   in elem "Status: Review needed" labelNames) $
+              foldr (\issue acc -> case GH.issuePullRequest issue of
+                                     Nothing -> acc
+                                     Just pr -> (issue, pr) : acc) [] issues
 
-            prettyPrintIssuePr i pr comments = intercalate "\n" [ "Title: " ++ GH.issueTitle i
-                                                                , "URL: " ++ GH.pullRequestUrl pr
-                                                                , "Comments count: " ++ show (length comments)
-                                                                ]
+            prettyPrintIssuePr i pr = intercalate "\n" [ "Title: " ++ GH.issueTitle i
+                                                       , "URL: " ++ GH.pullRequestUrl pr
+                                                       ]
 
-            sortPrs = sortBy $
-                      flip $
-                      (compare `on` (length . (\(_, _, c) -> c)))
-
-            text = intercalate "\n\n" $
-                   map (uncurry3 prettyPrintIssuePr) $
-                   sortPrs pullRequests
-        postResponse $ "Open pull requests sorted by comments:\n\n" ++ text
+            text = intercalate "\n\n" $ map (uncurry prettyPrintIssuePr) pullRequests
+        postResponse text
 pullRequests _ _ = postResponse "Only one argument name please"
-
-uncurry3 f (a, b, c) = f a b c
 
 howMuchSwift :: (BotRequest r) => UnauthenticatedActionHandler r
 howMuchSwift _ _ = do
