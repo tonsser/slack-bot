@@ -12,6 +12,7 @@ module BotAction
 
 import Import hiding (groupBy, Authenticated, get)
 import Data.Maybe (fromJust)
+import Data.Char (toLower)
 import qualified Data.List.Utils as L
 import System.Random
 import qualified System.Process as SP
@@ -317,7 +318,46 @@ actions = [ BotAction { command = "authenticate"
                       , category = CategoryInformation
                       , accessGroup = Everyone
                       }
+          , BotAction { command = "prs for {repository name}"
+                      , actionHandler = Unauthenticated pullRequests
+                      , category = CategoryUtility
+                      , accessGroup = Everyone
+                      }
           ]
+
+pullRequests :: (BotRequest r) => UnauthenticatedActionHandler r
+pullRequests [repoName] _ = do
+    postResponse "Checking, please wait"
+    issues' <- liftIO $ runExceptT $ do issues <- ExceptT $ GH.issues repoName
+                                        -- TODO: Fetch comments in parallel
+                                        comments <- mapM (ExceptT . GH.issueComments) issues
+                                        return $ zip issues comments
+    case issues' of
+      Left e -> postResponse $ show e
+      Right issuesAndComments -> do
+        let pullRequests =
+              filter (\(i, _pr, _comments) -> let labelNames = map GH.labelName $ GH.issueLabels i
+                            in elem "Status: Review needed" labelNames) $
+              foldr (\(issue, comments) acc -> case GH.issuePullRequest issue of
+                                                 Nothing -> acc
+                                                 Just pr -> (issue, pr, comments) : acc) [] issuesAndComments
+
+            prettyPrintIssuePr i pr comments = intercalate "\n" [ "Title: " ++ GH.issueTitle i
+                                                                , "URL: " ++ GH.pullRequestUrl pr
+                                                                , "Comments count: " ++ show (length comments)
+                                                                ]
+
+            sortPrs = sortBy $
+                      flip $
+                      (compare `on` (length . (\(_, _, c) -> c)))
+
+            text = intercalate "\n\n" $
+                   map (uncurry3 prettyPrintIssuePr) $
+                   sortPrs pullRequests
+        postResponse $ "Open pull requests sorted by comments:\n\n" ++ text
+pullRequests _ _ = postResponse "Only one argument name please"
+
+uncurry3 f (a, b, c) = f a b c
 
 howMuchSwift :: (BotRequest r) => UnauthenticatedActionHandler r
 howMuchSwift _ _ = do

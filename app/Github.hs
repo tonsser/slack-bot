@@ -7,10 +7,16 @@ module Github
     , issueUrl
     , issueTitle
     , issueBody
+    , issuePullRequest
+    , issueLabels
+    , issueComments
+    , labelName
+    , pullRequestUrl
     , closeIssue
     , commentOnIssue
     , languageBreakdown
     , languagePercentages
+    , issueIsPullRequest
     )
   where
 
@@ -32,28 +38,85 @@ data GithubIssue = GithubIssue
                  , issueUrl :: String
                  , issueTitle :: String
                  , issueBody :: Maybe String
+                 , issuePullRequest :: Maybe GithubPullRequest
+                 , issueLabels :: [GithubLabel]
+                 , issueCommentsUrl :: String
                  } deriving (Show)
+
+issueIsPullRequest :: GithubIssue -> Bool
+issueIsPullRequest issue = isJust $ issuePullRequest issue
+
+data GithubLabel = GithubLabel
+                 { labelName :: String
+                 } deriving (Show)
+
+data GithubPullRequest = GithubPullRequest
+                       { pullRequestUrl :: String
+                       } deriving (Show)
 
 instance FromJSON GithubIssue where
     parseJSON (Object v) = GithubIssue <$>
                            v .: "number" <*>
                            v .: "html_url" <*>
                            v .: "title" <*>
-                           v .:? "body"
+                           v .:? "body" <*>
+                           v .:? "pull_request" <*>
+                           v .: "labels" <*>
+                           v .: "comments_url"
+    parseJSON _ = mzero
+
+instance FromJSON GithubPullRequest where
+    parseJSON (Object v) = GithubPullRequest <$>
+                           v .: "html_url"
+    parseJSON _ = mzero
+
+instance FromJSON GithubLabel where
+    parseJSON (Object v) = GithubLabel <$>
+                           v .: "name"
     parseJSON _ = mzero
 
 issues :: String -> IO (Either GenericException [GithubIssue])
-issues repo = do
+issues repo = let url = "https://api.github.com/repos/tonsser/" ++ repo ++ "/issues"
+              in getGithubResource "issues" url
+
+issueComments :: GithubIssue -> IO (Either GenericException [GithubComment])
+issueComments = getGithubResource "comments" . issueCommentsUrl
+
+getGithubResource :: (FromJSON a) => String -> String -> IO (Either GenericException [a])
+getGithubResource debug url = do
     accessToken <- encodeTextToBS <$> getAccessToken
-    let url = "https://api.github.com/repos/tonsser/" ++ repo ++ "/issues"
-        params = [ ("access_token", Just accessToken)
-                 ]
+    let params = [ ("access_token", Just accessToken) ]
     initReq <- parseUrl url
     let req = setQueryString params $ initReq { method = "GET"
                                               , requestHeaders = [("User-Agent" :: CI ByteString, "Tonsser-Slack-Bot")]
                                               }
     body <- fmap responseBody <$> safeHttpLbs req
-    return $ body >>= parseGithubIssues
+    return $ body >>= parseGithubJson debug
+
+data GithubUser = GithubUser
+                { userLogin :: String
+                } deriving (Show)
+
+data GithubComment = GithubComment
+                   { commentBody :: String
+                   , commentUser :: GithubUser
+                   } deriving (Show)
+
+instance FromJSON GithubUser where
+    parseJSON (Object v) = GithubUser <$>
+                           v .: "login"
+    parseJSON _ = mzero
+
+instance FromJSON GithubComment where
+    parseJSON (Object v) = GithubComment <$>
+                           v .: "body" <*>
+                           v .: "user"
+    parseJSON _ = mzero
+
+parseGithubJson :: (FromJSON a) => String -> LBS.ByteString -> Either GenericException [a]
+parseGithubJson debug json = case decode json of
+                               Nothing -> Left $ GenericException $ "Error in parsing: " ++ debug
+                               Just x -> Right x
 
 languageBreakdown :: String -> IO (Either GenericException (HashMap String Integer))
 languageBreakdown repo = do
